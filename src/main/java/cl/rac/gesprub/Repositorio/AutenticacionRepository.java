@@ -12,7 +12,6 @@ import cl.rac.gesprub.Entidad.Usuario;
 public interface AutenticacionRepository extends JpaRepository<Autenticacion, Long>{
 
 	
-	// --- AÑADIR ESTE MÉTODO ---
     // Permite buscar la autenticación asociada a un objeto Usuario.
     // Esto funciona si en tu entidad Autenticacion tienes una relación @OneToOne a Usuario.
     Optional<Autenticacion> findByUsuario(Usuario usuario);
