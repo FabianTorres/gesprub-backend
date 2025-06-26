@@ -3,6 +3,7 @@ package cl.rac.gesprub.Entidad;
 import java.sql.Date;
 import java.sql.Timestamp;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,44 +16,49 @@ public class Usuario {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id_usuario;
+	@Column(name = "id_usuario") // Buena práctica ser explícito
+	private Long idUsuario;
 	
-	private String nombre_usuario;
+	@Column(name = "nombre_usuario")
+	private String nombreUsuario;
 	
-	private String rol_usuario;
+	@Column(name = "rol_usuario")
+	private String rolUsuario;
 	
 	private int activo;
 	
 	private String correo;
 	
-	private Date fecha_creacion;
+	@Column(name = "fecha_creacion")
+	private Date fechaCreacion;
 	
-	private Timestamp ultimo_login;
+	@Column(name = "ultimo_login")
+	private Timestamp ultimoLogin;
 	
 	
 
-	public Long getId_usuario() {
-		return id_usuario;
+	public Long getIdUsuario() {
+		return idUsuario;
 	}
 
-	public void setId_usuario(Long id_usuario) {
-		this.id_usuario = id_usuario;
+	public void setIdUsuario(Long idUsuario) {
+		this.idUsuario = idUsuario;
 	}
 
-	public String getNombre_usuario() {
-		return nombre_usuario;
+	public String getNombreUsuario() {
+		return nombreUsuario;
 	}
 
-	public void setNombre_usuario(String nombre_usuario) {
-		this.nombre_usuario = nombre_usuario;
+	public void setNombreUsuario(String nombreUsuario) {
+		this.nombreUsuario = nombreUsuario;
 	}
 
-	public String getRol_usuario() {
-		return rol_usuario;
+	public String getRolUsuario() {
+		return rolUsuario;
 	}
 
-	public void setRol_usuario(String rol_usuario) {
-		this.rol_usuario = rol_usuario;
+	public void setRolUsuario(String rolUsuario) {
+		this.rolUsuario = rolUsuario;
 	}
 
 	public int getActivo() {
@@ -71,20 +77,20 @@ public class Usuario {
 		this.correo = correo;
 	}
 
-	public Date getFecha_creacion() {
-		return fecha_creacion;
+	public Date getFechaCreacion() {
+		return fechaCreacion;
 	}
 
-	public void setFecha_creacion(Date fecha_creacion) {
-		this.fecha_creacion = fecha_creacion;
+	public void setFechaCreacion(Date fechaCreacion) {
+		this.fechaCreacion = fechaCreacion;
 	}
 
-	public Timestamp getUltimo_login() {
-		return ultimo_login;
+	public Timestamp getUltimoLogin() {
+		return ultimoLogin;
 	}
 
-	public void setUltimo_login(Timestamp ultimo_login) {
-		this.ultimo_login = ultimo_login;
+	public void setUltimoLogin(Timestamp ultimoLogin) {
+		this.ultimoLogin = ultimoLogin;
 	}
 	
 	

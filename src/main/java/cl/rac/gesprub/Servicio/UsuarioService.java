@@ -26,7 +26,7 @@ public class UsuarioService {
     }
 
     public Usuario updateUsuario(Long id_usuario, Usuario usuario) {
-    	usuario.setId_usuario(id_usuario);
+    	usuario.setIdUsuario(id_usuario);
         return usuarioRepository.save(usuario);
     }
 
