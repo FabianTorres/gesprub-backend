@@ -2,8 +2,12 @@ package cl.rac.gesprub.config;
 
 import cl.rac.gesprub.Servicio.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -15,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
 
 @Configuration // Le dice a Spring que esta es una clase de configuración
 @EnableWebSecurity // Habilita la seguridad web de Spring en nuestro proyecto
@@ -30,11 +35,22 @@ public class SecurityConfig {
         http
             // 1. Deshabilitar CSRF (Cross-Site Request Forgery) porque usamos JWT, que es inmune a este tipo de ataque.
             .csrf(csrf -> csrf.disable())
+            
+         // 1. AÑADIR ESTA SECCIÓN COMPLETA PARA CONFIGURAR CORS
+            .cors(cors -> cors.configurationSource(request -> {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(List.of("*"));
+                // No es estrictamente necesario para este caso, pero es buena práctica
+                configuration.setAllowCredentials(true); 
+                return configuration;
+            }))
 
             // 2. Definir las reglas de autorización para las peticiones HTTP.
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/autenticacion/login").permitAll() // Permitimos el acceso público a nuestro endpoint de login.
-                // Puedes añadir aquí otras rutas públicas si las tienes (ej. /api/public/**)
+                .requestMatchers(HttpMethod.POST, "/api/usuario").permitAll()      // Puedes añadir aquí otras rutas públicas si las tienes (ej. /api/public/**)
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 

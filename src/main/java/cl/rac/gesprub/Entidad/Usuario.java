@@ -3,6 +3,8 @@ package cl.rac.gesprub.Entidad;
 import java.sql.Date;
 import java.sql.Timestamp;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +31,7 @@ public class Usuario {
 	
 	private String correo;
 	
+	@CreationTimestamp
 	@Column(name = "fecha_creacion")
 	private Date fechaCreacion;
 	

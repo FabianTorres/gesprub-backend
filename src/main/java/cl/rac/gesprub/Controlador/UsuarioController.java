@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import cl.rac.gesprub.Entidad.Usuario;
 import cl.rac.gesprub.Servicio.UsuarioService;
+import cl.rac.gesprub.dto.RegistroRequest;
 
 @RestController
 @RequestMapping("/api/usuario")
@@ -23,8 +24,9 @@ public class UsuarioController {
     private UsuarioService usuarioService;
 	
 	@PostMapping
-    public Usuario createUsuario(@RequestBody Usuario usuario) {
-        return usuarioService.createUsuario(usuario);
+
+    public Usuario createUsuario(@RequestBody RegistroRequest request) { 
+        return usuarioService.createUsuario(request);
     }
 	
 	@GetMapping
