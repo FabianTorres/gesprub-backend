@@ -1,6 +1,6 @@
 package cl.rac.gesprub.Entidad;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,7 +20,7 @@ public class Componente {
 	
 	private int hito_componente;
 	
-	private Date fecha_limite;
+	private LocalDate fecha_limite;
 	
 	private int activo;
 	
@@ -51,11 +51,11 @@ public class Componente {
 		this.hito_componente = hito_componente;
 	}
 
-	public Date getFecha_limite() {
+	public LocalDate getFecha_limite() {
 		return fecha_limite;
 	}
 
-	public void setFecha_limite(Date fecha_limite) {
+	public void setFecha_limite(LocalDate fecha_limite) {
 		this.fecha_limite = fecha_limite;
 	}
 
