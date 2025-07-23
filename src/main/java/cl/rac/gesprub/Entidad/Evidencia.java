@@ -2,6 +2,7 @@ package cl.rac.gesprub.Entidad;
 
 import java.sql.Timestamp;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,7 +19,8 @@ public class Evidencia {
 	
 	private String descripcion_evidencia;
 	
-	private String resultado_evidencia;
+	@Column(name = "estado_evidencia")
+	private String estado_evidencia;
 	
 	private Timestamp fecha_evidencia;
 	
@@ -29,6 +31,9 @@ public class Evidencia {
 	private int id_usuario_ejecutante;
 	
 	private int id_caso;
+	
+	@Column(name = "criticidad")
+	private String criticidad;
 	
 	
 
@@ -48,12 +53,21 @@ public class Evidencia {
 		this.descripcion_evidencia = descripcion_evidencia;
 	}
 
-	public String getResultado_evidencia() {
-		return resultado_evidencia;
+
+	public String getEstado_evidencia() {
+		return estado_evidencia;
 	}
 
-	public void setResultado_evidencia(String resultado_evidencia) {
-		this.resultado_evidencia = resultado_evidencia;
+	public void setEstado_evidencia(String estado_evidencia) {
+		this.estado_evidencia = estado_evidencia;
+	}
+
+	public String getCriticidad() {
+		return criticidad;
+	}
+
+	public void setCriticidad(String criticidad) {
+		this.criticidad = criticidad;
 	}
 
 	public Timestamp getFecha_evidencia() {
