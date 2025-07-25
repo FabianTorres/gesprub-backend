@@ -10,10 +10,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import cl.rac.gesprub.Entidad.Caso;
+import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.CasoService;
+import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 
 @RestController
 @RequestMapping("/api/caso")
@@ -46,5 +49,26 @@ public class CasoController {
     public void deleteCaso(@PathVariable Long id) {
         casoService.deleteCaso(id);
     }
+	
+	
+	//Obtiene la ultima evidencia de cada caso
+	@GetMapping("/evidencia")
+	public List<CasoConEvidenciaDTO> getCasosConUltimaEvidencia() {
+	    return casoService.getCasosConUltimaEvidencia();
+	}
+	
+	//Obtiene todas las evidencias de un solo caso, por id
+	@GetMapping("/{id}/evidencias")
+	public List<Evidencia> getEvidenciasPorCaso(@PathVariable int id) {
+	    return casoService.getEvidenciasPorCaso(id);
+	}
+	
+	//Obtiene la ultima evidencia de cada caso por componente
+	@GetMapping("/evidenciacomp")
+	public List<CasoConEvidenciaDTO> getCasosConUltimaEvidenciaPorComponente(
+	        @RequestParam int componenteId) {
+
+	    return casoService.getCasosConUltimaEvidenciaPorComponente(componenteId);
+	}
 
 }

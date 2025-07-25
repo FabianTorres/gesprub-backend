@@ -2,6 +2,8 @@ package cl.rac.gesprub.Entidad;
 
 import java.sql.Timestamp;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,7 +24,9 @@ public class Evidencia {
 	@Column(name = "estado_evidencia")
 	private String estado_evidencia;
 	
-	private Timestamp fecha_evidencia;
+	@JsonProperty("fecha_evidencia")
+	@Column(name = "fecha_evidencia")
+	private Timestamp fechaEvidencia;
 	
 	private String url_evidencia;
 	
@@ -30,7 +34,9 @@ public class Evidencia {
 	
 	private int id_usuario_ejecutante;
 	
-	private int id_caso;
+	@JsonProperty("id_caso")
+	@Column(name = "id_caso")
+	private int idCaso;
 	
 	@Column(name = "criticidad")
 	private String criticidad;
@@ -70,12 +76,14 @@ public class Evidencia {
 		this.criticidad = criticidad;
 	}
 
-	public Timestamp getFecha_evidencia() {
-		return fecha_evidencia;
+
+
+	public Timestamp getFechaEvidencia() {
+		return fechaEvidencia;
 	}
 
-	public void setFecha_evidencia(Timestamp fecha_evidencia) {
-		this.fecha_evidencia = fecha_evidencia;
+	public void setFechaEvidencia(Timestamp fechaEvidencia) {
+		this.fechaEvidencia = fechaEvidencia;
 	}
 
 	public String getUrl_evidencia() {
@@ -102,13 +110,14 @@ public class Evidencia {
 		this.id_usuario_ejecutante = id_usuario_ejecutante;
 	}
 
-	public int getId_caso() {
-		return id_caso;
+	public int getIdCaso() {
+		return idCaso;
 	}
 
-	public void setId_caso(int id_caso) {
-		this.id_caso = id_caso;
+	public void setIdCaso(int idCaso) {
+		this.idCaso = idCaso;
 	}
+
 	
 	
 	

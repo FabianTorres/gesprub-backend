@@ -1,5 +1,8 @@
 package cl.rac.gesprub.Entidad;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,8 +22,10 @@ public class Caso {
 	private String descripcion_caso;
 
 	private int activo;
-
-	private int id_componente;
+	
+	@JsonProperty("id_componente")
+	@Column(name = "id_componente")
+	private int idComponente;
 
 	private int id_usuario_creador;
 
@@ -74,12 +79,14 @@ public class Caso {
 		this.activo = activo;
 	}
 
-	public int getId_componente() {
-		return id_componente;
+
+
+	public int getIdComponente() {
+		return idComponente;
 	}
 
-	public void setId_componente(int id_componente) {
-		this.id_componente = id_componente;
+	public void setIdComponente(int idComponente) {
+		this.idComponente = idComponente;
 	}
 
 	public int getId_usuario_creador() {
