@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import cl.rac.gesprub.dto.RegistroRequest; 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,7 @@ import cl.rac.gesprub.Entidad.Autenticacion;
 import cl.rac.gesprub.Entidad.Usuario;
 import cl.rac.gesprub.Repositorio.AutenticacionRepository;
 import cl.rac.gesprub.Repositorio.UsuarioRepository;
+import cl.rac.gesprub.dto.UsuarioDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -22,32 +25,65 @@ public class UsuarioService {
     private final AutenticacionRepository autenticacionRepository;
     private final PasswordEncoder passwordEncoder;
 	
-    @Transactional // ¡CLAVE! Esto hace que todo el método sea una única transacción.
-    // Si algo falla (ej. al guardar la contraseña), se deshace la creación del usuario.
+    @Transactional 
 	public Usuario createUsuario(RegistroRequest request) {
-		// 1. Crear y poblar la entidad Usuario
+    	
+    	if (usuarioRepository.findByNombreUsuario(request.getNombreUsuario()).isPresent()) {
+            
+            throw new IllegalArgumentException("El nombre de usuario '" + request.getNombreUsuario() + "' ya está en uso.");
+        }
+        
+    	
+    	
+		//Crear y poblar la entidad Usuario
 		Usuario nuevoUsuario = new Usuario();
 		nuevoUsuario.setNombreUsuario(request.getNombreUsuario());
 		nuevoUsuario.setCorreo(request.getCorreo());
 		nuevoUsuario.setRolUsuario(request.getRolUsuario()); // Asignamos el rol
 		nuevoUsuario.setActivo(1); // Activamos el usuario por defecto
 		
-		// 2. Guardar el nuevo usuario para obtener su ID generado
+		// Guardar el nuevo usuario para obtener su ID generado
 		Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
 		
-		// 3. Crear y poblar la entidad Autenticacion
+		// Crear y poblar la entidad Autenticacion
 		Autenticacion nuevaAutenticacion = new Autenticacion();
 		// Ciframos la contraseña que viene del request ANTES de guardarla
 		nuevaAutenticacion.setPassword(passwordEncoder.encode(request.getPassword()));
-		// ¡El enlace! Asociamos esta autenticación con el usuario que acabamos de guardar.
+		// Asociamos esta autenticación con el usuario que acabamos de guardar.
 		nuevaAutenticacion.setUsuario(usuarioGuardado);
 		
-		// 4. Guardar la entidad de autenticación
+		// Guardar la entidad de autenticación
 		autenticacionRepository.save(nuevaAutenticacion);
 		
-		// 5. Devolvemos el usuario que se creó
+		// Devolvemos el usuario que se creó
 		return usuarioGuardado;
 	}
+    
+    
+    /**
+     * Busca un usuario por su nombre de usuario y lo convierte a un DTO.
+     * @param nombreUsuario El nombre del usuario a buscar.
+     * @return Un UsuarioDTO con la información pública del usuario.
+     */
+    public UsuarioDTO getUsuarioByNombreUsuario(String nombreUsuario) {
+        // 1. Buscamos la entidad Usuario en la base de datos.
+        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
+                .orElseThrow(() -> new UsernameNotFoundException("No se encontró un usuario con el nombre: " + nombreUsuario));
+
+        // 2. Convertimos la entidad a un DTO para devolver solo los datos necesarios.
+        return convertirADto(usuario);
+    }
+    
+    private UsuarioDTO convertirADto(Usuario usuario) {
+        UsuarioDTO dto = new UsuarioDTO();
+        dto.setIdUsuario(usuario.getIdUsuario());
+        dto.setNombreUsuario(usuario.getNombreUsuario());
+        dto.setRolUsuario(usuario.getRolUsuario());
+        dto.setCorreo(usuario.getCorreo());
+        dto.setActivo(usuario.getActivo());
+        dto.setFechaCreacion(usuario.getFechaCreacion());
+        return dto;
+    }
 
     public List<Usuario> getAllUsuarios() {
         return usuarioRepository.findAll();

@@ -39,7 +39,7 @@ public class SecurityConfig {
          // 1. AÑADIR ESTA SECCIÓN COMPLETA PARA CONFIGURAR CORS
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+                configuration.setAllowedOrigins(List.of("http://localhost:4200","http://localhost:8080", "http://10.32.1.11:8080"));
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("*"));
                 // No es estrictamente necesario para este caso, pero es buena práctica
@@ -51,6 +51,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/autenticacion/login").permitAll() // Permitimos el acceso público a nuestro endpoint de login.
                 .requestMatchers(HttpMethod.POST, "/api/usuario").permitAll()      // Puedes añadir aquí otras rutas públicas si las tienes (ej. /api/public/**)
+                .requestMatchers(HttpMethod.POST, "/api/proyecto").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/componente").permitAll()
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 

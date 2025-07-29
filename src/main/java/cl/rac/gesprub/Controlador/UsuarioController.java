@@ -3,6 +3,7 @@ package cl.rac.gesprub.Controlador;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import cl.rac.gesprub.Entidad.Usuario;
 import cl.rac.gesprub.Servicio.UsuarioService;
 import cl.rac.gesprub.dto.RegistroRequest;
+import cl.rac.gesprub.dto.UsuarioDTO;
 
 @RestController
 @RequestMapping("/api/usuario")
@@ -32,6 +34,12 @@ public class UsuarioController {
 	@GetMapping
     public List<Usuario> getAllUsuarios() {
         return usuarioService.getAllUsuarios();
+    }
+	
+	@GetMapping("/nombreusuario/{username}")
+    public ResponseEntity<UsuarioDTO> getUsuarioByUsername(@PathVariable String username) {
+        UsuarioDTO usuarioDto = usuarioService.getUsuarioByNombreUsuario(username);
+        return ResponseEntity.ok(usuarioDto);
     }
 	
 	@GetMapping("/{id}")

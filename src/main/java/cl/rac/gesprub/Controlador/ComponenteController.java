@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import cl.rac.gesprub.Entidad.Componente;
 import cl.rac.gesprub.Servicio.ComponenteService;
+import cl.rac.gesprub.dto.ComponenteDTO;
 
 
 @RestController
@@ -29,8 +31,8 @@ public class ComponenteController {
     }
 	
 	@GetMapping
-    public List<Componente> getAllComponentes() {
-        return componenteService.getAllComponentes();
+    public List<ComponenteDTO> getAllComponentes(@RequestParam(required = false) Long proyectoId) {
+        return componenteService.getComponentes(proyectoId);
     }
 	
 	@GetMapping("/{id}")

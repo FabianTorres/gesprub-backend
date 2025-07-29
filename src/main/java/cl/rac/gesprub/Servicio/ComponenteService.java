@@ -1,12 +1,14 @@
 package cl.rac.gesprub.Servicio;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import cl.rac.gesprub.Entidad.Componente;
 import cl.rac.gesprub.Repositorio.ComponenteRepository;
+import cl.rac.gesprub.dto.ComponenteDTO;
 
 @Service
 public class ComponenteService {
@@ -33,6 +35,37 @@ public class ComponenteService {
 
     public void deleteComponente(Long id_componente) {
     	componenteRepository.deleteById(id_componente);
+    }
+    
+    public List<ComponenteDTO> getComponentes(Long proyectoId) {
+        List<Componente> componentes;
+        if (proyectoId != null) {
+            componentes = componenteRepository.findByProyectoId(proyectoId);
+        } else {
+            componentes = componenteRepository.findAll();
+        }
+        
+
+        // Se convierte la lista de Entidades a una lista de DTOs
+        return componentes.stream().map(this::convertirADto)
+                .collect(Collectors.toList());
+                
+    }
+    
+    private ComponenteDTO convertirADto(Componente componente) {
+        ComponenteDTO dto = new ComponenteDTO();
+        dto.setId_componente(componente.getId_componente());
+        dto.setNombre_componente(componente.getNombre_componente());
+        dto.setHito_componente(componente.getHito_componente());
+        dto.setFecha_limite(componente.getFecha_limite());
+        dto.setActivo(componente.getActivo());
+        
+        if (componente.getProyecto() != null) {
+            dto.setId_proyecto(componente.getProyecto().getId_proyecto());
+            dto.setNombre_proyecto(componente.getProyecto().getNombre_proyecto());
+        }
+        
+        return dto;
     }
 
 
