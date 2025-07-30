@@ -82,6 +82,7 @@ public class UsuarioService {
         dto.setCorreo(usuario.getCorreo());
         dto.setActivo(usuario.getActivo());
         dto.setFechaCreacion(usuario.getFechaCreacion());
+        dto.setUltimoLogin(usuario.getUltimoLogin()); // <-- LÍNEA AÑADIDA
         return dto;
     }
 
@@ -100,6 +101,15 @@ public class UsuarioService {
 
     public void deleteUsuario(Long id_usuario) {
     	usuarioRepository.deleteById(id_usuario);
+    }
+    
+    public UsuarioDTO getUsuarioByIdComoDto(Long id_usuario) {
+        // Buscamos la entidad en la base de datos
+        Usuario usuario = usuarioRepository.findById(id_usuario)
+                .orElseThrow(() -> new UsernameNotFoundException("No se encontró un usuario con el id: " + id_usuario));
+        
+        // La convertimos al DTO y la devolvemos
+        return convertirADto(usuario);
     }
 
 }

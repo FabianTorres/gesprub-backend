@@ -36,13 +36,13 @@ public class ComponenteController {
     }
 	
 	@GetMapping("/{id}")
-    public Componente getComponenteById(@PathVariable Long id) {
-        return componenteService.getComponenteById(id);
+    public ComponenteDTO getComponenteById(@PathVariable Long id) {
+        return componenteService.getComponenteByIdComoDto(id);
     }
 	
 	@PutMapping("/{id}")
-    public Componente updateComponente(@PathVariable Long id, @RequestBody Componente componente) {
-        return componenteService.updateComponente(id, componente);
+    public ComponenteDTO updateComponente(@PathVariable Long id, @RequestBody Componente componente) {
+        return componenteService.updateComponenteComoDto(id, componente);
     }
 	
 	@DeleteMapping("/{id}")

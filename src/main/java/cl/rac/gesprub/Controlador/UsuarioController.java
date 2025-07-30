@@ -43,8 +43,8 @@ public class UsuarioController {
     }
 	
 	@GetMapping("/{id}")
-    public Usuario getUsuarioById(@PathVariable Long id) {
-        return usuarioService.getUsuarioById(id);
+    public UsuarioDTO getUsuarioById(@PathVariable Long id) {
+        return usuarioService.getUsuarioByIdComoDto(id);
     }
 	
 	@PutMapping("/{id}")

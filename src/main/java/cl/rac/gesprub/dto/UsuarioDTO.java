@@ -3,6 +3,7 @@ package cl.rac.gesprub.dto;
 import lombok.Getter;
 import lombok.Setter;
 import java.sql.Date;
+import java.sql.Timestamp;
 
 @Getter
 @Setter
@@ -13,4 +14,5 @@ public class UsuarioDTO {
     private String correo;
     private int activo;
     private Date fechaCreacion;
+    private Timestamp ultimoLogin;
 }

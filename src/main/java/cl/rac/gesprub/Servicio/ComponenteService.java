@@ -67,6 +67,29 @@ public class ComponenteService {
         
         return dto;
     }
+    
+    /**
+     * Obtiene un componente por su ID y lo devuelve como un DTO seguro.
+     */
+    public ComponenteDTO getComponenteByIdComoDto(Long id_componente) {
+        Componente componente = componenteRepository.findById(id_componente)
+                .orElseThrow(() -> new RuntimeException("Componente no encontrado con id: " + id_componente));
+        return convertirADto(componente);
+    }
+
+    /**
+     * Actualiza un componente y devuelve el resultado como un DTO seguro.
+     */
+    public ComponenteDTO updateComponenteComoDto(Long id_componente, Componente componente) {
+        // Aseguramos que el ID sea el correcto
+    	componente.setId_componente(id_componente);
+        
+        // Guardamos la entidad actualizada
+        Componente componenteGuardado = componenteRepository.save(componente);
+        
+        // Devolvemos el resultado convertido a DTO
+        return convertirADto(componenteGuardado);
+    }
 
 
 }
