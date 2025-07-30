@@ -12,6 +12,8 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
+import cl.rac.gesprub.dto.EvidenciaItemDTO;
+import cl.rac.gesprub.dto.HistorialDTO;
 
 @Service
 public class CasoService {
@@ -55,6 +57,8 @@ public class CasoService {
             .collect(Collectors.toList());
     }
     
+    
+    //Se obtiene las evidencias de un caso por su id
     public List<Evidencia> getEvidenciasPorCaso(int idCaso) {
         return evidenciaRepository.findByIdCasoOrderByFechaEvidenciaDesc(idCaso);
     }
@@ -69,6 +73,45 @@ public class CasoService {
         return casos.stream()
             .map(c -> new CasoConEvidenciaDTO(c, evidenciaMap.get(c.getId_caso().intValue())))
             .collect(Collectors.toList());
+    }
+    
+    public HistorialDTO getHistorialPorCaso(int idCaso) {
+        // 1. Buscamos la entidad Caso. Si no existe, lanzamos un error.
+        Caso caso = casoRepository.findById((long) idCaso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + idCaso));
+
+        // 2. Buscamos todas las evidencias asociadas a ese caso.
+        // Spring Data JPA crea este método automáticamente a partir del nombre.
+        List<Evidencia> evidencias = evidenciaRepository.findByIdCasoOrderByFechaEvidenciaDesc(idCaso);
+
+        // 3. Transformamos la lista de Entidades a una lista de DTOs.
+        List<EvidenciaItemDTO> historialItems = evidencias.stream()
+                .map(evidencia -> {
+                    EvidenciaItemDTO item = new EvidenciaItemDTO();
+                    item.setId_evidencia(evidencia.getId_evidencia());
+                    item.setDescripcion_evidencia(evidencia.getDescripcion_evidencia());
+                    item.setEstado_evidencia(evidencia.getEstado_evidencia());
+                    item.setFechaEvidencia(evidencia.getFechaEvidencia());
+                    item.setCriticidad(evidencia.getCriticidad());
+                    item.setUrl_evidencia(evidencia.getUrl_evidencia());
+
+                    // ¡Aquí está la magia! Obtenemos el nombre del usuario relacionado.
+                    if (evidencia.getUsuarioEjecutante() != null) {
+                        item.setNombreUsuarioEjecutante(evidencia.getUsuarioEjecutante().getNombreUsuario());
+                    }
+
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        // 4. Creamos el DTO final de respuesta.
+        HistorialDTO resultado = new HistorialDTO();
+        resultado.setId_caso(caso.getId_caso());
+        resultado.setNombre_caso(caso.getNombre_caso());
+        resultado.setDescripcion_caso(caso.getDescripcion_caso());
+        resultado.setHistorial(historialItems);
+
+        return resultado;
     }
 
 }

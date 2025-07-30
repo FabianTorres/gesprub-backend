@@ -6,9 +6,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -32,7 +35,9 @@ public class Evidencia {
 	
 	private int id_jira;
 	
-	private int id_usuario_ejecutante;
+	@ManyToOne(fetch = FetchType.LAZY) // LAZY es una optimización de rendimiento
+    @JoinColumn(name = "id_usuario_ejecutante")
+    private Usuario usuarioEjecutante;
 	
 	@JsonProperty("id_caso")
 	@Column(name = "id_caso")
@@ -102,13 +107,6 @@ public class Evidencia {
 		this.id_jira = id_jira;
 	}
 
-	public int getId_usuario_ejecutante() {
-		return id_usuario_ejecutante;
-	}
-
-	public void setId_usuario_ejecutante(int id_usuario_ejecutante) {
-		this.id_usuario_ejecutante = id_usuario_ejecutante;
-	}
 
 	public int getIdCaso() {
 		return idCaso;
@@ -116,6 +114,14 @@ public class Evidencia {
 
 	public void setIdCaso(int idCaso) {
 		this.idCaso = idCaso;
+	}
+
+	public Usuario getUsuarioEjecutante() {
+		return usuarioEjecutante;
+	}
+
+	public void setUsuarioEjecutante(Usuario usuarioEjecutante) {
+		this.usuarioEjecutante = usuarioEjecutante;
 	}
 
 	

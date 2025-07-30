@@ -17,6 +17,7 @@ import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.CasoService;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
+import cl.rac.gesprub.dto.HistorialDTO;
 
 @RestController
 @RequestMapping("/api/caso")
@@ -70,5 +71,17 @@ public class CasoController {
 
 	    return casoService.getCasosConUltimaEvidenciaPorComponente(componenteId);
 	}
+	
+	/**
+     * NUEVO ENDPOINT
+     * Obtiene el historial completo de evidencias para un caso específico.
+     * @param id El ID del caso, pasado en la URL.
+     * @return Un objeto HistorialDTO con los datos del caso y su lista de evidencias.
+     */
+	@GetMapping("/{id}/historial")
+	public HistorialDTO getHistorialPorCaso(@PathVariable int id) {
+	    return casoService.getHistorialPorCaso(id);
+	}
+
 
 }
