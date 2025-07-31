@@ -5,19 +5,24 @@ import cl.rac.gesprub.Entidad.Evidencia;
 
 public class CasoConEvidenciaDTO {
 	
-	private Caso caso;
-    private Evidencia ultimaEvidencia;
+	private CasoDTO caso; // <-- CAMBIO: De Entidad a DTO
+    private EvidenciaDTO ultimaEvidencia; // <-- CAMBIO: De Entidad a DTO
     
     public CasoConEvidenciaDTO(Caso caso, Evidencia ultimaEvidencia) {
-        this.caso = caso;
-        this.ultimaEvidencia = ultimaEvidencia;
+        // La conversión ocurre aquí, dentro del constructor
+        this.caso = new CasoDTO(caso);
+        if (ultimaEvidencia != null) {
+            this.ultimaEvidencia = new EvidenciaDTO(ultimaEvidencia);
+        } else {
+            this.ultimaEvidencia = null;
+        }
     }
-
-    public Caso getCaso() {
+    
+    public CasoDTO getCaso() {
         return caso;
     }
 
-    public Evidencia getUltimaEvidencia() {
+    public EvidenciaDTO getUltimaEvidencia() {
         return ultimaEvidencia;
     }
 
