@@ -91,6 +91,7 @@ public class CasoService {
                     item.setId_evidencia(evidencia.getId_evidencia());
                     item.setDescripcion_evidencia(evidencia.getDescripcion_evidencia());
                     item.setEstado_evidencia(evidencia.getEstado_evidencia());
+                    
                     item.setFecha_evidencia(evidencia.getFechaEvidencia());
                     item.setCriticidad(evidencia.getCriticidad());
                     item.setUrl_evidencia(evidencia.getUrl_evidencia());
@@ -110,9 +111,14 @@ public class CasoService {
         resultado.setId_caso(caso.getId_caso());
         resultado.setNombre_caso(caso.getNombre_caso());
         resultado.setDescripcion_caso(caso.getDescripcion_caso());
+        resultado.setNum_formulario(caso.getNum_formulario());
         resultado.setHistorial(historialItems);
 
         return resultado;
+    }
+    
+    public List<Integer> getNumerosDeFormularioUnicos() {
+        return casoRepository.findDistinctNumFormulario();
     }
 
 }

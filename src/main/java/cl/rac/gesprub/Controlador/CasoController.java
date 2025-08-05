@@ -82,6 +82,11 @@ public class CasoController {
 	public HistorialDTO getHistorialPorCaso(@PathVariable int id) {
 	    return casoService.getHistorialPorCaso(id);
 	}
+	
+	@GetMapping("/formularios")
+    public List<Integer> getNumerosDeFormulario() {
+        return casoService.getNumerosDeFormularioUnicos();
+    }
 
 
 }

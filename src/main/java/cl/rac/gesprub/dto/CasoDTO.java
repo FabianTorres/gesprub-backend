@@ -12,6 +12,7 @@ public class CasoDTO {
     private String nombre_caso;
     private String descripcion_caso;
     private int activo;
+    private Integer num_formulario;
     private int id_componente;
     private int id_usuario_creador;
     private String estado_modificacion;
@@ -29,6 +30,7 @@ public class CasoDTO {
         this.nombre_caso = caso.getNombre_caso();
         this.descripcion_caso = caso.getDescripcion_caso();
         this.activo = caso.getActivo();
+        this.num_formulario = caso.getNum_formulario();
         this.id_componente = caso.getIdComponente();
         this.id_usuario_creador = caso.getId_usuario_creador();
         this.estado_modificacion = caso.getEstado_modificacion();

@@ -23,6 +23,9 @@ public class Caso {
 
 	private int activo;
 	
+	@Column(name = "num_formulario")
+	private Integer num_formulario;
+	
 	@JsonProperty("id_componente")
 	@Column(name = "id_componente")
 	private int idComponente;
@@ -80,6 +83,14 @@ public class Caso {
 	}
 
 
+
+	public Integer getNum_formulario() {
+		return num_formulario;
+	}
+
+	public void setNum_formulario(Integer num_formulario) {
+		this.num_formulario = num_formulario;
+	}
 
 	public int getIdComponente() {
 		return idComponente;
