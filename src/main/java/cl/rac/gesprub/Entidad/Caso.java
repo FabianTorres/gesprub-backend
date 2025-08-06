@@ -32,7 +32,9 @@ public class Caso {
 
 	private int id_usuario_creador;
 
-	private String estado_modificacion;
+	@JsonProperty("id_estado_modificacion")
+	@Column(name = "id_estado_modificacion")
+	private int id_estado_modificacion;
 	
 	private int anio;
 	
@@ -108,12 +110,15 @@ public class Caso {
 		this.id_usuario_creador = id_usuario_creador;
 	}
 
-	public String getEstado_modificacion() {
-		return estado_modificacion;
+
+
+
+	public int getId_estado_modificacion() {
+		return id_estado_modificacion;
 	}
 
-	public void setEstado_modificacion(String estado_modificacion) {
-		this.estado_modificacion = estado_modificacion;
+	public void setId_estado_modificacion(int id_estado_modificacion) {
+		this.id_estado_modificacion = id_estado_modificacion;
 	}
 
 	public int getAnio() {
