@@ -112,6 +112,7 @@ public class CasoService {
         resultado.setNombre_caso(caso.getNombre_caso());
         resultado.setDescripcion_caso(caso.getDescripcion_caso());
         resultado.setNum_formulario(caso.getNum_formulario());
+        resultado.setId_estado_modificacion(caso.getId_estado_modificacion());
         resultado.setHistorial(historialItems);
 
         return resultado;

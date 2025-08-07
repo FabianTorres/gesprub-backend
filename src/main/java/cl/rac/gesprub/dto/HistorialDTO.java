@@ -12,6 +12,7 @@ public class HistorialDTO {
     private String nombre_caso;
     private String descripcion_caso;
     private Integer num_formulario;
+    private int id_estado_modificacion;
     
     // Lista de Evidencias
     private List<EvidenciaItemDTO> historial;
