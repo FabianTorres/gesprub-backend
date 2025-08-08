@@ -26,6 +26,9 @@ public class Caso {
 	@Column(name = "num_formulario")
 	private Integer num_formulario;
 	
+	@Column(name = "fuente")
+	private String fuente;
+	
 	@JsonProperty("id_componente")
 	@Column(name = "id_componente")
 	private int idComponente;
@@ -176,5 +179,15 @@ public class Caso {
 	public void setJp_responsable(String jp_responsable) {
 		this.jp_responsable = jp_responsable;
 	}
+
+	public String getFuente() {
+		return fuente;
+	}
+
+	public void setFuente(String fuente) {
+		this.fuente = fuente;
+	}
+	
+	
 
 }

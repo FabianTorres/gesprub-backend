@@ -98,6 +98,7 @@ public class CasoService {
                     item.setCriticidad(evidencia.getCriticidad());
                     item.setUrl_evidencia(evidencia.getUrl_evidencia());
                     item.setId_jira(evidencia.getId_jira());
+                    
 
                     // ¡Aquí está la magia! Obtenemos el nombre del usuario relacionado.
                     if (evidencia.getUsuarioEjecutante() != null) {
@@ -116,6 +117,8 @@ public class CasoService {
         resultado.setNum_formulario(caso.getNum_formulario());
         resultado.setId_estado_modificacion(caso.getId_estado_modificacion());
         resultado.setHistorial(historialItems);
+        resultado.setFuente(caso.getFuente());
+        
 
         return resultado;
     }
