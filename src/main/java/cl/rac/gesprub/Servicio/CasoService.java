@@ -12,6 +12,7 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
+import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
 
@@ -91,6 +92,7 @@ public class CasoService {
                     item.setId_evidencia(evidencia.getId_evidencia());
                     item.setDescripcion_evidencia(evidencia.getDescripcion_evidencia());
                     item.setEstado_evidencia(evidencia.getEstado_evidencia());
+                    item.setVersion_ejecucion(evidencia.getVersion_ejecucion());
                     
                     item.setFecha_evidencia(evidencia.getFechaEvidencia());
                     item.setCriticidad(evidencia.getCriticidad());
@@ -120,6 +122,19 @@ public class CasoService {
     
     public List<Integer> getNumerosDeFormularioUnicos() {
         return casoRepository.findDistinctNumFormulario();
+    }
+    
+    public Caso updateCasoVersion(Long id_caso, CasoVersionUpdateDTO versionDto) {
+        // 1. Buscamos la entidad Caso completa en la base de datos.
+        //    Si no la encontramos, lanzamos una excepción.
+        Caso casoExistente = casoRepository.findById(id_caso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + id_caso));
+
+        // 2. Actualizamos únicamente el campo 'version'.
+        casoExistente.setVersion(versionDto.getVersion());
+
+        // 3. Guardamos la entidad actualizada y la devolvemos.
+        return casoRepository.save(casoExistente);
     }
 
 }

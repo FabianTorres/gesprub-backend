@@ -27,6 +27,9 @@ public class Evidencia {
 	@Column(name = "estado_evidencia")
 	private String estado_evidencia;
 	
+	@Column(name = "version_ejecucion")
+	private String version_ejecucion;
+	
 	@JsonProperty("fecha_evidencia")
 	@Column(name = "fecha_evidencia")
 	private Timestamp fechaEvidencia;
@@ -123,6 +126,16 @@ public class Evidencia {
 	public void setUsuarioEjecutante(Usuario usuarioEjecutante) {
 		this.usuarioEjecutante = usuarioEjecutante;
 	}
+
+	public String getVersion_ejecucion() {
+		return version_ejecucion;
+	}
+
+	public void setVersion_ejecucion(String version_ejecucion) {
+		this.version_ejecucion = version_ejecucion;
+	}
+	
+	
 
 	
 	

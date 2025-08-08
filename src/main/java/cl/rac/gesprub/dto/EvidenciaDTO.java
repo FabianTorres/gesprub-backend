@@ -12,6 +12,7 @@ public class EvidenciaDTO {
     private Long id_evidencia;
     private String descripcion_evidencia;
     private String estado_evidencia;
+    private String version_ejecucion;
     private Timestamp fechaEvidencia;
     private String url_evidencia;
     private int id_jira;
@@ -25,6 +26,7 @@ public class EvidenciaDTO {
         this.id_evidencia = evidencia.getId_evidencia();
         this.descripcion_evidencia = evidencia.getDescripcion_evidencia();
         this.estado_evidencia = evidencia.getEstado_evidencia();
+        this.version_ejecucion = evidencia.getVersion_ejecucion();
         this.fechaEvidencia = evidencia.getFechaEvidencia();
         this.url_evidencia = evidencia.getUrl_evidencia();
         this.id_jira = evidencia.getId_jira();
