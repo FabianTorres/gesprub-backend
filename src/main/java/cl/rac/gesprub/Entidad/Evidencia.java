@@ -12,7 +12,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.List;
 
 @Entity
 @Table(name = "evidencia")
@@ -48,6 +50,9 @@ public class Evidencia {
 	
 	@Column(name = "criticidad")
 	private String criticidad;
+	
+	@OneToMany(mappedBy = "evidencia")
+    private List<ArchivoEvidencia> archivos;
 	
 	
 
@@ -133,6 +138,14 @@ public class Evidencia {
 
 	public void setVersion_ejecucion(String version_ejecucion) {
 		this.version_ejecucion = version_ejecucion;
+	}
+
+	public List<ArchivoEvidencia> getArchivos() {
+		return archivos;
+	}
+
+	public void setArchivos(List<ArchivoEvidencia> archivos) {
+		this.archivos = archivos;
 	}
 	
 	
