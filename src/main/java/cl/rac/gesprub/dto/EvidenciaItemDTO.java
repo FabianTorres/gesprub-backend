@@ -15,5 +15,6 @@ public class EvidenciaItemDTO {
     private String criticidad;
     private String url_evidencia;
 	private int id_jira;
+	private String rut;
     private String nombreUsuarioEjecutante; 
 }

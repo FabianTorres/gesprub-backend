@@ -13,13 +13,12 @@ public class EvidenciaDTO {
     private String descripcion_evidencia;
     private String estado_evidencia;
     private String version_ejecucion;
+    private String rut;
     private Timestamp fechaEvidencia;
     private String url_evidencia;
     private int id_jira;
     private int idCaso;
     private String criticidad;
-    // ¡Importante! No incluimos el objeto 'usuarioEjecutante' para evitar el error.
-    // Si necesitas el nombre, lo añadiríamos aquí como un String.
 
     // Un constructor que facilita la conversión
     public EvidenciaDTO(Evidencia evidencia) {
@@ -32,5 +31,6 @@ public class EvidenciaDTO {
         this.id_jira = evidencia.getId_jira();
         this.idCaso = evidencia.getIdCaso();
         this.criticidad = evidencia.getCriticidad();
+        this.rut = evidencia.getRut();
     }
 }

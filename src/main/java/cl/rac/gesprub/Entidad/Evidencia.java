@@ -54,6 +54,9 @@ public class Evidencia {
 	@OneToMany(mappedBy = "evidencia")
     private List<ArchivoEvidencia> archivos;
 	
+	@Column(name = "rut")
+    private String rut;
+	
 	
 
 	public Long getId_evidencia() {
@@ -147,6 +150,14 @@ public class Evidencia {
 	public void setArchivos(List<ArchivoEvidencia> archivos) {
 		this.archivos = archivos;
 	}
+	
+	public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
+    }
 	
 	
 
