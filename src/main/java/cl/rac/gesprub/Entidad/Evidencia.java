@@ -29,6 +29,9 @@ public class Evidencia {
 	@Column(name = "estado_evidencia")
 	private String estado_evidencia;
 	
+	@Column(name = "id_estado_evidencia")
+	private int id_estado_evidencia;
+	
 	@Column(name = "version_ejecucion")
 	private String version_ejecucion;
 	
@@ -50,6 +53,9 @@ public class Evidencia {
 	
 	@Column(name = "criticidad")
 	private String criticidad;
+	
+	@Column(name = "id_criticidad")
+	private Integer id_criticidad;
 	
 	@OneToMany(mappedBy = "evidencia")
     private List<ArchivoEvidencia> archivos;
@@ -158,6 +164,24 @@ public class Evidencia {
     public void setRut(String rut) {
         this.rut = rut;
     }
+
+	public int getId_estado_evidencia() {
+		return id_estado_evidencia;
+	}
+
+	public void setId_estado_evidencia(int id_estado_evidencia) {
+		this.id_estado_evidencia = id_estado_evidencia;
+	}
+
+	public Integer getId_criticidad() {
+		return id_criticidad;
+	}
+
+	public void setId_criticidad(Integer id_criticidad) {
+		this.id_criticidad = id_criticidad;
+	}
+
+	
 	
 	
 

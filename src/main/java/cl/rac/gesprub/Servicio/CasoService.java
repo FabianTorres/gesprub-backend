@@ -92,10 +92,12 @@ public class CasoService {
                     item.setId_evidencia(evidencia.getId_evidencia());
                     item.setDescripcion_evidencia(evidencia.getDescripcion_evidencia());
                     item.setEstado_evidencia(evidencia.getEstado_evidencia());
+                    item.setId_estado_evidencia(evidencia.getId_estado_evidencia());
                     item.setVersion_ejecucion(evidencia.getVersion_ejecucion());
                     
                     item.setFecha_evidencia(evidencia.getFechaEvidencia());
                     item.setCriticidad(evidencia.getCriticidad());
+                    item.setId_criticidad(evidencia.getId_criticidad());
                     item.setUrl_evidencia(evidencia.getUrl_evidencia());
                     item.setId_jira(evidencia.getId_jira());
                     item.setRut(evidencia.getRut());
