@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,6 +18,7 @@ import cl.rac.gesprub.Entidad.Usuario;
 import cl.rac.gesprub.Servicio.UsuarioService;
 import cl.rac.gesprub.dto.RegistroRequest;
 import cl.rac.gesprub.dto.UsuarioDTO;
+import cl.rac.gesprub.dto.CambioPasswordDTO;
 
 @RestController
 @RequestMapping("/api/usuario")
@@ -55,6 +57,12 @@ public class UsuarioController {
 	@DeleteMapping("/{id}")
     public void deleteUsuario(@PathVariable Long id) {
 		usuarioService.deleteUsuario(id);
+    }
+	
+	@PatchMapping("/cambiar-password")
+    public ResponseEntity<Void> cambiarPassword(@RequestBody CambioPasswordDTO dto) {
+        usuarioService.cambiarPassword(dto);
+        return ResponseEntity.ok().build(); // Devuelve una respuesta 200 OK sin cuerpo
     }
 
 }

@@ -3,9 +3,13 @@ package cl.rac.gesprub.Servicio;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+
+import cl.rac.gesprub.dto.CambioPasswordDTO;
 import cl.rac.gesprub.dto.RegistroRequest; 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +62,32 @@ public class UsuarioService {
 		// Devolvemos el usuario que se creó
 		return usuarioGuardado;
 	}
+    
+    @Transactional
+    public void cambiarPassword(CambioPasswordDTO dto) {
+        // 1. Obtenemos el nombre del usuario logueado desde el contexto de seguridad
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof UserDetails)) {
+            throw new IllegalStateException("No se pudo obtener el usuario del contexto de seguridad.");
+        }
+        String username = ((UserDetails) principal).getUsername();
+        
+        // 2. Buscamos al usuario y su autenticación en la base de datos
+        Usuario usuario = usuarioRepository.findByNombreUsuario(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+        
+        Autenticacion autenticacion = autenticacionRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new RuntimeException("No se encontraron credenciales para el usuario: " + username));
+        
+        // 3. Verificamos que la contraseña actual sea correcta
+        if (!passwordEncoder.matches(dto.getPasswordActual(), autenticacion.getPassword())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta.");
+        }
+        
+        // 4. Hasheamos y guardamos la nueva contraseña
+        autenticacion.setPassword(passwordEncoder.encode(dto.getNuevaPassword()));
+        autenticacionRepository.save(autenticacion);
+    }
     
     
     /**
