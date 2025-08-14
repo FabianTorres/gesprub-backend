@@ -24,4 +24,9 @@ public class ProyectoService {
         return proyectoRepository.save(proyecto);
     }
     
+    public Proyecto updateProyecto(Long id_proyecto, Proyecto proyecto) {
+    	proyecto.setId_proyecto(id_proyecto);
+        return proyectoRepository.save(proyecto);
+    }
+    
 }

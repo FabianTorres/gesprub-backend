@@ -22,4 +22,9 @@ public class ProyectoController {
     public Proyecto createProyecto(@RequestBody Proyecto proyecto) {
         return proyectoService.createProyecto(proyecto);
     }
+    
+    @PutMapping("/{id}")
+    public Proyecto updateProyecto(@PathVariable Long id, @RequestBody Proyecto proyecto) {
+        return proyectoService.updateProyecto(id, proyecto);
+    }
 }

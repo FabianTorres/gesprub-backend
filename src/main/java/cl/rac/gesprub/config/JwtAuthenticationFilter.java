@@ -1,13 +1,15 @@
 package cl.rac.gesprub.config;
 
 import cl.rac.gesprub.Servicio.CustomUserDetailsService;
-import io.jsonwebtoken.ExpiredJwtException; // ¡Importante añadir este import!
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.ExpiredJwtException; 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // Import para logging
+import lombok.extern.slf4j.Slf4j; 
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +17,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.util.HashMap; 
+import java.util.Map;
 
 import java.io.IOException;
 
@@ -50,6 +55,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (ExpiredJwtException e) {
             // Usamos el logger para registrar el evento de forma limpia en lugar del stack trace
             log.warn("El token JWT ha expirado: {}", e.getMessage());
+            response.setStatus(HttpStatus.UNAUTHORIZED.value()); // Status 401
+            response.setContentType("application/json");
+            
+            Map<String, Object> errorDetails = new HashMap<>();
+            errorDetails.put("error", "Token Expirado");
+            errorDetails.put("mensaje", "La sesión ha expirado. Por favor, inicie sesión de nuevo.");
+            
+            // Usamos ObjectMapper para convertir el mapa a un string JSON
+            new ObjectMapper().writeValue(response.getWriter(), errorDetails);
+            return;
         } catch (Exception e) {
             log.error("Error al procesar el token JWT: {}", e.getMessage());
         }
