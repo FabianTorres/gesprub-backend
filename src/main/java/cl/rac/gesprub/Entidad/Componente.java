@@ -2,6 +2,9 @@ package cl.rac.gesprub.Entidad;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -30,6 +33,10 @@ public class Componente {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "id_proyecto")
 	private Proyecto proyecto;
+	
+	@JsonProperty("id_ambito")
+	@Column(name = "id_ambito")
+	private int idAmbito;
 	
 	
 	
@@ -80,6 +87,14 @@ public class Componente {
 
 	public void setProyecto(Proyecto proyecto) {
 		this.proyecto = proyecto;
+	}
+
+	public int getIdAmbito() {
+		return idAmbito;
+	}
+
+	public void setIdAmbito(int idAmbito) {
+		this.idAmbito = idAmbito;
 	}
 	
 	

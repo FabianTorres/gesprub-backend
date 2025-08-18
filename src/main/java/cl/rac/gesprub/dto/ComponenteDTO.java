@@ -13,5 +13,6 @@ public class ComponenteDTO {
     private LocalDate fecha_limite;
     private int activo;
     private Long id_proyecto; 
-    private String nombre_proyecto; 
+    private String nombre_proyecto;
+    private int id_ambito; 
 }
