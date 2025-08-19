@@ -3,6 +3,7 @@ package cl.rac.gesprub.Entidad;
 import java.sql.Timestamp;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,7 +44,7 @@ public class Evidencia {
 	
 	private int id_jira;
 	
-	@ManyToOne(fetch = FetchType.LAZY) // LAZY es una optimización de rendimiento
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario_ejecutante")
     private Usuario usuarioEjecutante;
 	

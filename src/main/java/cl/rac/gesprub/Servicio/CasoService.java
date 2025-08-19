@@ -103,7 +103,7 @@ public class CasoService {
                     item.setRut(evidencia.getRut());
                     
 
-                    // ¡Aquí está la magia! Obtenemos el nombre del usuario relacionado.
+                    // Obtenemos el nombre del usuario relacionado.
                     if (evidencia.getUsuarioEjecutante() != null) {
                         item.setNombreUsuarioEjecutante(evidencia.getUsuarioEjecutante().getNombreUsuario());
                     }
