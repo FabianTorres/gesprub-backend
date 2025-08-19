@@ -2,12 +2,17 @@ package cl.rac.gesprub.Entidad;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import java.util.Set;
 
 @Entity
 @Table(name = "caso")
@@ -52,6 +57,14 @@ public class Caso {
 	private String caso_de_uso;
 	
 	private String jp_responsable;
+	
+	 @ManyToMany(fetch = FetchType.LAZY)
+	    @JoinTable(
+	        name = "caso_fuente", // Nombre de la tabla intermedia
+	        joinColumns = @JoinColumn(name = "id_caso"), // Columna que apunta a esta entidad (Caso)
+	        inverseJoinColumns = @JoinColumn(name = "id_fuente") // Columna que apunta a la otra entidad (Fuente)
+	    )
+	    private Set<Fuente> fuentes;
 
 	// Getters and setters
 
@@ -187,6 +200,14 @@ public class Caso {
 	public void setFuente(String fuente) {
 		this.fuente = fuente;
 	}
+	
+	public Set<Fuente> getFuentes() {
+        return fuentes;
+    }
+
+    public void setFuentes(Set<Fuente> fuentes) {
+        this.fuentes = fuentes;
+    }
 	
 	
 

@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/usuario").permitAll()      // Puedes añadir aquí otras rutas públicas si las tienes (ej. /api/public/**)
                 .requestMatchers(HttpMethod.POST, "/api/proyecto").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/componente").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/caso/**").authenticated()
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 

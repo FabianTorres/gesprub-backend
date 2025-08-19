@@ -3,18 +3,23 @@ package cl.rac.gesprub.Servicio;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
+import cl.rac.gesprub.Entidad.Fuente;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
+import cl.rac.gesprub.Repositorio.FuenteRepository;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
+import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CasoService {
@@ -24,6 +29,9 @@ public class CasoService {
 	
 	@Autowired
     private EvidenciaRepository evidenciaRepository;
+	
+	@Autowired
+    private FuenteRepository fuenteRepository;
 	
 	public Caso createCaso(Caso caso) {
         return casoRepository.save(caso);
@@ -122,6 +130,13 @@ public class CasoService {
         resultado.setHistorial(historialItems);
         resultado.setFuente(caso.getFuente());
         
+        // --- LÓGICA DE CONVERSIÓN AÑADIDA ---
+        if (caso.getFuentes() != null) {
+            resultado.setFuentes(caso.getFuentes().stream()
+                .map(FuenteDTO::new)
+                .collect(Collectors.toSet()));
+        }
+        
 
         return resultado;
     }
@@ -141,6 +156,68 @@ public class CasoService {
 
         // 3. Guardamos la entidad actualizada y la devolvemos.
         return casoRepository.save(casoExistente);
+    }
+    
+    @Transactional
+    public Caso asignarFuenteACaso(Long idCaso, Long idFuente) {
+        // 1. Buscamos el caso.
+        Caso caso = casoRepository.findById(idCaso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + idCaso));
+
+        // 2. Buscamos la fuente.
+        Fuente fuente = fuenteRepository.findById(idFuente)
+                .orElseThrow(() -> new RuntimeException("Fuente no encontrada con id: " + idFuente));
+        
+        // 3. Añadimos la fuente al conjunto de fuentes del caso.
+        caso.getFuentes().add(fuente);
+
+        // 4. Guardamos el caso. JPA se encargará de actualizar la tabla intermedia.
+        return casoRepository.save(caso);
+    }
+    
+    @Transactional
+    public Caso quitarFuenteDeCaso(Long idCaso, Long idFuente) {
+        // 1. Buscamos el caso.
+        Caso caso = casoRepository.findById(idCaso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + idCaso));
+
+        // 2. Buscamos la fuente.
+        Fuente fuente = fuenteRepository.findById(idFuente)
+                .orElseThrow(() -> new RuntimeException("Fuente no encontrada con id: " + idFuente));
+        
+        // 3. Quitamos la fuente del conjunto de fuentes del caso.
+        caso.getFuentes().remove(fuente);
+
+        // 4. Guardamos el caso para que JPA actualice la tabla intermedia.
+        return casoRepository.save(caso);
+    }
+    
+    @Transactional(readOnly = true) // readOnly = true es una optimización para consultas
+    public Set<FuenteDTO> getFuentesPorCaso(Long idCaso) {
+        Caso caso = casoRepository.findById(idCaso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + idCaso));
+
+        return caso.getFuentes().stream()
+                .map(FuenteDTO::new)
+                .collect(Collectors.toSet());
+    }
+    
+    @Transactional
+    public Caso sincronizarFuentesParaCaso(Long idCaso, List<Long> idsFuente) {
+        // 1. Buscamos el caso.
+        Caso caso = casoRepository.findById(idCaso)
+                .orElseThrow(() -> new RuntimeException("Caso no encontrado con id: " + idCaso));
+
+        // 2. Buscamos todas las entidades Fuente correspondientes a los IDs.
+        List<Fuente> fuentes = fuenteRepository.findAllById(idsFuente);
+        
+        // 3. Reemplazamos las fuentes antiguas por las nuevas.
+        // La anotación @ManyToMany se encarga de la magia en la tabla intermedia.
+        caso.getFuentes().clear();
+        caso.getFuentes().addAll(fuentes);
+
+        // 4. Guardamos el caso actualizado.
+        return casoRepository.save(caso);
     }
 
 }

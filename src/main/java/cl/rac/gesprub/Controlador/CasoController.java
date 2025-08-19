@@ -18,8 +18,12 @@ import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.CasoService;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
+import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import cl.rac.gesprub.Entidad.Fuente;
+import java.util.Set;
+import cl.rac.gesprub.dto.FuenteDTO;
 
 @RestController
 @RequestMapping("/api/caso")
@@ -93,6 +97,29 @@ public class CasoController {
 	@PatchMapping("/{id}/version")
     public Caso updateCasoVersion(@PathVariable Long id, @RequestBody CasoVersionUpdateDTO versionDto) {
         return casoService.updateCasoVersion(id, versionDto);
+    }
+	
+	//Fuentes
+	@PostMapping("/{idCaso}/fuentes")
+    public Caso asignarFuenteACaso(@PathVariable Long idCaso, @RequestBody Fuente fuente) {
+        Long idFuente = fuente.getId_fuente();
+        return casoService.asignarFuenteACaso(idCaso, idFuente);
+    }
+	
+	@DeleteMapping("/{idCaso}/fuentes/{idFuente}")
+    public Caso quitarFuenteDeCaso(@PathVariable Long idCaso, @PathVariable Long idFuente) {
+        return casoService.quitarFuenteDeCaso(idCaso, idFuente);
+    }
+	
+	@GetMapping("/{idCaso}/fuentes")
+    public Set<FuenteDTO> getFuentesPorCaso(@PathVariable Long idCaso) {
+        return casoService.getFuentesPorCaso(idCaso);
+    }
+	
+	@PutMapping("/{idCaso}/fuentes")
+    public CasoDTO sincronizarFuentes(@PathVariable Long idCaso, @RequestBody List<Long> idsFuente) {
+        Caso casoActualizado = casoService.sincronizarFuentesParaCaso(idCaso, idsFuente);
+        return new CasoDTO(casoActualizado); // Devolvemos un DTO para ser consistentes
     }
 
 
