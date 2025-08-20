@@ -17,6 +17,8 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.EvidenciaService;
 import cl.rac.gesprub.dto.EvidenciaDTO;
 import cl.rac.gesprub.dto.MoverEvidenciaDTO;
+import cl.rac.gesprub.dto.EvidenciaActivoDTO; 
+
 
 
 @RestController
@@ -59,6 +61,15 @@ public class EvidenciaController {
         Evidencia evidenciaActualizada = evidenciaService.moverEvidencia(idEvidencia, body.getNuevoIdCaso());
         
         return new EvidenciaDTO(evidenciaActualizada);
+    }
+	
+	/**
+     * Actualiza el estado (activo/inactivo) de una evidencia.
+     */
+    @PatchMapping("/{id}/activo")
+    public EvidenciaDTO updateEvidenciaActivo(@PathVariable Long id, @RequestBody EvidenciaActivoDTO body) {
+        Evidencia evidenciaActualizada = evidenciaService.updateActivo(id, body.getActivo());
+        return new EvidenciaDTO(evidenciaActualizada); 
     }
 
 }

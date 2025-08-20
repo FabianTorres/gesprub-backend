@@ -21,6 +21,7 @@ public class EvidenciaDTO {
     private int idCaso;
     private String criticidad;
     private Integer id_criticidad;
+    private int activo;
 
     // Un constructor que facilita la conversión
     public EvidenciaDTO(Evidencia evidencia) {
@@ -36,5 +37,6 @@ public class EvidenciaDTO {
         this.criticidad = evidencia.getCriticidad();
         this.id_criticidad = evidencia.getId_criticidad();
         this.rut = evidencia.getRut();
+        this.activo = evidencia.getActivo();
     }
 }

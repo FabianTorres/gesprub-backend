@@ -63,6 +63,9 @@ public class Evidencia {
 	@Column(name = "rut")
     private String rut;
 	
+	@Column(name = "activo", columnDefinition = "int default 1")
+    private int activo = 1;
+	
 	
 
 	public Long getId_evidencia() {
@@ -180,6 +183,14 @@ public class Evidencia {
 	public void setId_criticidad(Integer id_criticidad) {
 		this.id_criticidad = id_criticidad;
 	}
+	
+	public int getActivo() {
+        return activo;
+    }
+
+    public void setActivo(int activo) {
+        this.activo = activo;
+    }
 
 	
 	

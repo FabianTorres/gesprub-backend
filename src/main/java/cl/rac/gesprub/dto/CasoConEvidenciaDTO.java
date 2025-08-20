@@ -2,13 +2,15 @@ package cl.rac.gesprub.dto;
 
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
+import java.util.Set;
 
 public class CasoConEvidenciaDTO {
 	
-	private CasoDTO caso; // <-- CAMBIO: De Entidad a DTO
-    private EvidenciaDTO ultimaEvidencia; // <-- CAMBIO: De Entidad a DTO
+	private CasoDTO caso; 
+    private EvidenciaDTO ultimaEvidencia; 
+    private Set<String> rutsUnicos;
     
-    public CasoConEvidenciaDTO(Caso caso, Evidencia ultimaEvidencia) {
+    public CasoConEvidenciaDTO(Caso caso, Evidencia ultimaEvidencia, Set<String> rutsUnicos) {
         // La conversión ocurre aquí, dentro del constructor
         this.caso = new CasoDTO(caso);
         if (ultimaEvidencia != null) {
@@ -16,6 +18,7 @@ public class CasoConEvidenciaDTO {
         } else {
             this.ultimaEvidencia = null;
         }
+        this.rutsUnicos = rutsUnicos;
     }
     
     public CasoDTO getCaso() {
@@ -24,6 +27,10 @@ public class CasoConEvidenciaDTO {
 
     public EvidenciaDTO getUltimaEvidencia() {
         return ultimaEvidencia;
+    }
+    
+    public Set<String> getRutsUnicos() { 
+        return rutsUnicos;
     }
 
 }

@@ -19,4 +19,5 @@ public class EvidenciaItemDTO {
 	private int id_jira;
 	private String rut;
     private String nombreUsuarioEjecutante; 
+    private int activo;
 }

@@ -57,5 +57,21 @@ public class EvidenciaService {
         // 4. Guardar y devolver la evidencia actualizada.
         return evidenciaRepository.save(evidencia);
     }
+    
+    /**
+     * Actualiza únicamente el estado 'activo' de una evidencia.
+     * @param idEvidencia El ID de la evidencia a modificar.
+     * @param activo El nuevo valor para el campo (0 o 1).
+     * @return La evidencia actualizada.
+     */
+    @Transactional
+    public Evidencia updateActivo(Long idEvidencia, int activo) {
+        Evidencia evidencia = evidenciaRepository.findById(idEvidencia)
+                .orElseThrow(() -> new RuntimeException("Evidencia no encontrada con id: " + idEvidencia));
+
+        evidencia.setActivo(activo);
+        
+        return evidenciaRepository.save(evidencia);
+    }
 
 }
