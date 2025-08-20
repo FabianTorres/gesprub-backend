@@ -90,6 +90,7 @@ public class CasoService {
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     entry -> entry.getValue().stream()
+                    			  .filter(e -> e.getActivo() == 1)
                                   .max((e1, e2) -> e1.getFechaEvidencia().compareTo(e2.getFechaEvidencia()))
                                   .orElse(null)
                 ));
@@ -146,6 +147,7 @@ public class CasoService {
 	                .collect(Collectors.toMap(
 	                    Map.Entry::getKey,
 	                    entry -> entry.getValue().stream()
+	                    			  .filter(e -> e.getActivo() == 1)
 	                                  .max((e1, e2) -> e1.getFechaEvidencia().compareTo(e2.getFechaEvidencia()))
 	                                  .orElse(null)
 	                ));
