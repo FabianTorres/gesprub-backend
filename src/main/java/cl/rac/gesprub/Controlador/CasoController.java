@@ -79,7 +79,14 @@ public class CasoController {
 	}
 	
 	/**
-     * NUEVO ENDPOINT
+	 * Obtiene los RUTs únicos de las evidencias de un caso específico.
+	 */
+	@GetMapping("/{idCaso}/ruts")
+	public List<String> getRutsUnicosPorCaso(@PathVariable int idCaso) {
+		return casoService.getRutsUnicosPorCaso(idCaso);
+	}
+	
+	/**
      * Obtiene el historial completo de evidencias para un caso específico.
      * @param id El ID del caso, pasado en la URL.
      * @return Un objeto HistorialDTO con los datos del caso y su lista de evidencias.

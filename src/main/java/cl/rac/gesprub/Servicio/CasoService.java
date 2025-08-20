@@ -3,6 +3,7 @@ package cl.rac.gesprub.Servicio;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Collections;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,15 +56,54 @@ public class CasoService {
     }
     
     public List<CasoConEvidenciaDTO> getCasosConUltimaEvidencia() {
+    	
+    	// 1. Obtenemos todos los casos.
         List<Caso> casos = casoRepository.findAll();
-        List<Evidencia> ultimas = evidenciaRepository.findUltimaEvidenciaPorCaso();
+        if (casos.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 2. Extraemos los IDs de los casos.
+        List<Integer> idCasos = casos.stream()
+                                     .map(caso -> caso.getId_caso().intValue())
+                                     .collect(Collectors.toList());
 
-        Map<Integer, Evidencia> evidenciaMap = ultimas.stream()
-            .collect(Collectors.toMap(Evidencia::getIdCaso, e -> e));
+        // 3. Obtenemos TODAS las evidencias para esos casos en UNA SOLA CONSULTA.
+        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idCasos);
 
+        // 4. Agrupamos las evidencias por id_caso.
+        Map<Integer, List<Evidencia>> evidenciasPorCaso = todasLasEvidencias.stream()
+                .collect(Collectors.groupingBy(Evidencia::getIdCaso));
+
+        // 5. Creamos un mapa con el conjunto de RUTs únicos para cada caso.
+        Map<Integer, Set<String>> rutsUnicosPorCaso = evidenciasPorCaso.entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().stream()
+                                  .map(Evidencia::getRut)
+                                  .filter(rut -> rut != null && !rut.isEmpty())
+                                  .collect(Collectors.toSet())
+                ));
+
+        // 6. Encontramos la última evidencia para cada caso.
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasPorCaso.entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().stream()
+                                  .max((e1, e2) -> e1.getFechaEvidencia().compareTo(e2.getFechaEvidencia()))
+                                  .orElse(null)
+                ));
+
+        // 7. Construimos la respuesta final, pasando los 3 parámetros al constructor del DTO.
         return casos.stream()
-            .map(caso -> new CasoConEvidenciaDTO(caso, evidenciaMap.get(caso.getId_caso().intValue())))
+            .map(caso -> new CasoConEvidenciaDTO(
+                caso,
+                ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
+                rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet())
+            ))
             .collect(Collectors.toList());
+        
+
     }
     
     
@@ -73,15 +113,52 @@ public class CasoService {
     }
     
     public List<CasoConEvidenciaDTO> getCasosConUltimaEvidenciaPorComponente(int componenteId) {
+    	// 1. Obtenemos todos los casos para el componente.
         List<Caso> casos = casoRepository.findByIdComponente(componenteId);
-        List<Evidencia> ultimas = evidenciaRepository.findUltimaEvidenciaPorCaso();
+        if (casos.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 2. Extraemos los IDs de los casos para la siguiente consulta.
+        List<Integer> idCasos = casos.stream()
+                                     .map(caso -> caso.getId_caso().intValue())
+                                     .collect(Collectors.toList());
+        
+        
+        // 3. Obtenemos TODAS las evidencias para TODOS esos casos en UNA SOLA CONSULTA.
+        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idCasos);
+        
+        // 4. Procesamos las evidencias en memoria para agruparlas por caso.
+        Map<Integer, List<Evidencia>> evidenciasPorCaso = todasLasEvidencias.stream()
+                .collect(Collectors.groupingBy(Evidencia::getIdCaso));
+        
+	     // 5. Creamos un mapa que contenga el conjunto de RUTs únicos para cada caso.
+	      Map<Integer, Set<String>> rutsUnicosPorCaso = evidenciasPorCaso.entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().stream()
+                                  .map(Evidencia::getRut)
+                                  .filter(rut -> rut != null && !rut.isEmpty())
+                                  .collect(Collectors.toSet())
+                ));
+	      // 6. Encontramos la última evidencia para cada caso (esto es más rápido en memoria).
+	        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasPorCaso.entrySet().stream()
+	                .collect(Collectors.toMap(
+	                    Map.Entry::getKey,
+	                    entry -> entry.getValue().stream()
+	                                  .max((e1, e2) -> e1.getFechaEvidencia().compareTo(e2.getFechaEvidencia()))
+	                                  .orElse(null)
+	                ));
+        
 
-        Map<Integer, Evidencia> evidenciaMap = ultimas.stream()
-            .collect(Collectors.toMap(Evidencia::getIdCaso, e -> e));
-
-        return casos.stream()
-            .map(c -> new CasoConEvidenciaDTO(c, evidenciaMap.get(c.getId_caso().intValue())))
-            .collect(Collectors.toList());
+	        // 7. Construimos la respuesta final.
+	        return casos.stream()
+	            .map(caso -> new CasoConEvidenciaDTO(
+	                caso,
+	                ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
+	                rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet())
+	            ))
+	            .collect(Collectors.toList());
     }
     
     public HistorialDTO getHistorialPorCaso(int idCaso) {
@@ -109,6 +186,7 @@ public class CasoService {
                     item.setUrl_evidencia(evidencia.getUrl_evidencia());
                     item.setId_jira(evidencia.getId_jira());
                     item.setRut(evidencia.getRut());
+                    item.setActivo(evidencia.getActivo());
                     
 
                     // Obtenemos el nombre del usuario relacionado.
@@ -219,5 +297,9 @@ public class CasoService {
         // 4. Guardamos el caso actualizado.
         return casoRepository.save(caso);
     }
+    
+    public List<String> getRutsUnicosPorCaso(int idCaso) {
+		return evidenciaRepository.findDistinctRutByIdCaso(idCaso);
+	}
 
 }

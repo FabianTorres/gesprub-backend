@@ -15,5 +15,6 @@ public interface CasoRepository extends JpaRepository<Caso, Long>{
 	
 	@Query("SELECT DISTINCT c.num_formulario FROM Caso c WHERE c.num_formulario IS NOT NULL ORDER BY c.num_formulario ASC")
     List<Integer> findDistinctNumFormulario();
+	
 
 }
