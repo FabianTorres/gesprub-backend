@@ -5,7 +5,7 @@ trigger:
 
 variables:
   # --- MODIFICA SOLO LA CONEXIÓN DE SERVICIO ---
-  azureSubscription: 'NOMBRE_DE_TU_CONEXION_DE_SERVICIO' # ¡IMPORTANTE! Reemplaza esto con el nombre de tu Service Connection
+  azureSubscription: 'AzureConexionBackend' # ¡IMPORTANTE! Reemplaza esto con el nombre de tu Service Connection
 
   # --- Variables personalizadas para tu proyecto (¡YA CONFIGURADAS!) ---
   containerRegistry: 'registrogesprubbackend.azurecr.io' # Tu ACR
