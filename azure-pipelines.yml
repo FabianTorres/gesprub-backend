@@ -43,7 +43,7 @@ stages:
       displayName: 'Construir y Subir imagen a ACR'
       inputs:
         command: 'buildAndPush'
-        containerRegistry: $(azureSubscription) # Usa la conexión de servicio para autenticarse
+        containerRegistry: $(containerRegistry) # Usa la conexión de servicio para autenticarse
         repository: $(imageRepository)
         dockerfile: $(dockerfilePath)
         tags: |
