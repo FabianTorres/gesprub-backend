@@ -1,0 +1,72 @@
+# Pipeline para construir, dockerizar y desplegar el backend de Gesprub
+
+trigger:
+- main # Se activa con cada commit a la rama 'main'
+
+variables:
+  # --- MODIFICA SOLO LA CONEXIÓN DE SERVICIO ---
+  azureSubscription: 'NOMBRE_DE_TU_CONEXION_DE_SERVICIO' # ¡IMPORTANTE! Reemplaza esto con el nombre de tu Service Connection
+
+  # --- Variables personalizadas para tu proyecto (¡YA CONFIGURADAS!) ---
+  containerRegistry: 'registrogesprubbackend.azurecr.io' # Tu ACR
+  imageRepository: 'gesprub-backend'                     # Nombre de la imagen, basado en tu pom.xml
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  containerAppName: 'gesprub-backend-app'                # Nombre para tu nueva Container App
+  resourceGroup: 'gesprub'                               # Tu grupo de recursos
+  location: 'East US 2'                                  # Tu ubicación en Azure
+  tag: '$(Build.BuildId)'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: 'Construir y Subir Imagen Docker'
+  jobs:
+  - job: Build
+    displayName: 'Build & Push'
+    steps:
+    # Paso 1: Construir el proyecto con Maven para generar el .jar
+    - task: Maven@3
+      displayName: 'Build con Maven'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'package'
+        options: '-DskipTests' # Opcional: saltar tests para acelerar el pipeline
+        publishJUnitResults: false
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.21' # Especifica la versión de Java 21
+
+    # Paso 2: Construir y subir la imagen a tu ACR
+    # Esta tarea hace 'build' y 'push' en un solo paso eficiente.
+    - task: Docker@2
+      displayName: 'Construir y Subir imagen a ACR'
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: $(azureSubscription) # Usa la conexión de servicio para autenticarse
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        tags: |
+          $(tag)
+
+- stage: Deploy
+  displayName: 'Desplegar en Azure Container Apps'
+  jobs:
+  - job: Deploy
+    displayName: 'Desplegar'
+    steps:
+    # Paso 3: Desplegar la imagen en Azure Container Apps
+    - task: AzureContainerApps@1
+      displayName: 'Crear o Actualizar Container App'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        containerAppName: $(containerAppName)
+        resourceGroupName: $(resourceGroup)
+        imageToDeploy: '$(containerRegistry)/$(imageRepository):$(tag)'
+        # --- Configuración de Red y Escalamiento ---
+        ingress: 'external' # Hace tu API accesible desde internet
+        targetPort: 8090 # ¡IMPORTANTE! Coincide con tu server.port
+        # --- ¡CLAVE PARA AHORRAR COSTOS! ---
+        # Escala a CERO cuando no hay uso.
+        minReplicas: 0
+        maxReplicas: 1
