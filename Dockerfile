@@ -1,15 +1,30 @@
-# Usa una imagen base de Java 21, que coincide con tu pom.xml
+# --- Etapa 1: Construcción con Maven ---
+# Usamos una imagen que contiene Maven y JDK 21 para compilar el proyecto.
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
+# Establecemos el directorio de trabajo
+WORKDIR /workspace/app
+
+# Copiamos el pom.xml y descargamos las dependencias primero para aprovechar el cache de Docker
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Copiamos el resto del código fuente y construimos el proyecto
+COPY src ./src
+RUN mvn package -DskipTests
+
+# --- Etapa 2: Imagen Final ---
+# Usamos una imagen base de Java 21 muy ligera para la ejecución.
 FROM openjdk:21-jdk-slim
 
-# Establece el directorio de trabajo
+# Establecemos el directorio de trabajo
 WORKDIR /app
 
-# Copia el JAR de tu aplicación. El nombre del JAR se basa en tu pom.xml.
-# Necesitarás compilarlo primero: mvn package
-COPY target/gesprub-backend-1.0.jar app.jar
+# Copiamos únicamente el JAR construido desde la etapa 'build'
+COPY --from=build /workspace/app/target/gesprub-backend-1.0.jar app.jar
 
-# Expone el puerto 8090, que coincide con tu server.port
+# Exponemos el puerto 8090, que coincide con tu server.port
 EXPOSE 8090
 
 # Comando para ejecutar la aplicación
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","/app.jar"]
