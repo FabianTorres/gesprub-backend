@@ -6,6 +6,8 @@ trigger:
 variables:
   # --- Nombre de tu conexión de servicio a Azure ---
   azureSubscription: 'AzureConexionBackend'
+
+  # --- Nombre de la conexión de servicio a Docker Registry ---
   dockerRegistryServiceConnection: 'DockerRegistryConnectionGesprub'
 
   # --- Variables personalizadas para tu proyecto ---
@@ -35,36 +37,35 @@ stages:
         options: '-DskipTests'
         publishJUnitResults: false
         javaHomeOption: 'JDKVersion'
-        jdkVersionOption: '1.21'
-
-    # --- CAMBIO IMPORTANTE: PASOS DE DOCKER SEPARADOS ---
+        jdkVersionOption: '17'   # <= corregido, no uses "1.21"
 
     # Paso 2.1: Iniciar sesión en Azure Container Registry
-	- task: Docker@2
-	  displayName: 'Login to ACR'
-	  inputs:
-	    command: 'login'
-	    containerRegistry: $(dockerRegistryServiceConnection)
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        command: 'login'
+        containerRegistry: $(dockerRegistryServiceConnection)
+
     # Paso 2.2: Construir la imagen de Docker
-	- task: Docker@2
-	  displayName: 'Build Docker image'
-	  inputs:
-	    command: 'build'
-	    repository: $(imageRepository)
-	    dockerfile: $(dockerfilePath)
-	    containerRegistry: $(dockerRegistryServiceConnection)   # <--- Requiere esto
-	    tags: |
-	      $(tag)
+    - task: Docker@2
+      displayName: 'Build Docker image'
+      inputs:
+        command: 'build'
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
 
     # Paso 2.3: Subir la imagen a ACR
-	- task: Docker@2
-	  displayName: 'Push image to ACR'
-	  inputs:
-	    command: 'push'
-	    repository: $(imageRepository)
-	    containerRegistry: $(dockerRegistryServiceConnection)   # <--- Requiere esto
-	    tags: |
-	      $(tag)
+    - task: Docker@2
+      displayName: 'Push image to ACR'
+      inputs:
+        command: 'push'
+        repository: $(imageRepository)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
 
 - stage: Deploy
   displayName: 'Desplegar en Azure Container Apps'
