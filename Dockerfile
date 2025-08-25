@@ -21,7 +21,7 @@ FROM openjdk:21-jdk-slim
 WORKDIR /app
 
 # Copiamos únicamente el JAR construido desde la etapa 'build'
-COPY --from=build /workspace/app/target/gesprub-backend-1.0.jar app.jar
+COPY --from=build /workspace/app/target/*.jar app.jar
 
 # Exponemos el puerto 8090, que coincide con tu server.port
 EXPOSE 8090
