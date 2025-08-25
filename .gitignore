@@ -88,4 +88,7 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Exception for GitHub workflows
+!.github/
+
 >>>>>>> 7f756cac3f08d40a86454303d195b57e03fbcca9

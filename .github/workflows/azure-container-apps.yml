@@ -41,6 +41,8 @@ jobs:
         context: .
         push: true
         # Etiqueta la imagen con un número único de ejecución de GitHub (ej: miacrúnico.azurecr.io/gesprub-backend:12)
-        tags: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+        tags: |
+          ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.run_number }}
         # También la etiqueta como la más reciente ('latest')
         labels: "run-number=${{ github.run_number }}"

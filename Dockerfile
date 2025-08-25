@@ -13,6 +13,9 @@ RUN mvn dependency:go-offline
 COPY src ./src
 RUN mvn package -DskipTests
 
+# --- PASO DE DEPURACIÓN: Listamos los archivos en la carpeta target ---
+RUN ls -l /workspace/app/target/
+
 # --- Etapa 2: Imagen Final ---
 # Usamos una imagen base de Java 21 muy ligera para la ejecución.
 FROM openjdk:21-jdk-slim
