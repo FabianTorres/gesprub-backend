@@ -30,4 +30,5 @@ COPY --from=build /workspace/app/target/gesprub-backend-*.jar app.jar
 EXPOSE 8090
 
 # Comando para ejecutar la aplicación
-ENTRYPOINT ["java","-jar","/app.jar"]
+#ENTRYPOINT ["java","-jar","/app.jar"]
+ENTRYPOINT ["ls", "-lR", "/app"]
