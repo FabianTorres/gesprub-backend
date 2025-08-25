@@ -31,4 +31,5 @@ EXPOSE 8090
 
 # Comando para ejecutar la aplicación
 #ENTRYPOINT ["java","-jar","/app.jar"]
-ENTRYPOINT ["ls", "-lR", "/app"]
+#ENTRYPOINT ["ls", "-lR", "/app"]
+ENTRYPOINT ["java","-jar","/app/app.jar"]
