@@ -39,7 +39,12 @@ public class SecurityConfig {
          // 1. AÑADIR ESTA SECCIÓN COMPLETA PARA CONFIGURAR CORS
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:4200","http://localhost:8080", "http://10.32.1.11:8080"));
+                configuration.setAllowedOrigins(List.of(
+                		"http://localhost:4200",
+                		"http://localhost:8080", 
+                		"http://10.32.1.11:8080",
+                		"https://nice-coast-0dc38330f.1.azurestaticapps.net"
+                		));
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                 configuration.setAllowedHeaders(List.of("*"));
                 // No es estrictamente necesario para este caso, pero es buena práctica
