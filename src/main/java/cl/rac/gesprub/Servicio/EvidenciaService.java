@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.Repositorio.CasoRepository;
+import java.sql.Timestamp;
 
 
 @Service
@@ -21,6 +22,7 @@ public class EvidenciaService {
     private CasoRepository casoRepository;
 	
 	public Evidencia createEvidencia(Evidencia evidencia) {
+		evidencia.setFechaEvidencia(new Timestamp(System.currentTimeMillis()));
         return evidenciaRepository.save(evidencia);
     }
 
@@ -73,5 +75,6 @@ public class EvidenciaService {
         
         return evidenciaRepository.save(evidencia);
     }
-
+    
+ 
 }
