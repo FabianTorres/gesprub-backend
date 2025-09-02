@@ -3,8 +3,15 @@ package cl.rac.gesprub.Servicio;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Year;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
+import cl.rac.gesprub.Entidad.EstadoModificacion;
+import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
+import cl.rac.gesprub.dto.CasoImportDTO;
+import cl.rac.gesprub.dto.ValidationErrorDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -12,18 +19,24 @@ import org.springframework.stereotype.Service;
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Entidad.Fuente;
+import cl.rac.gesprub.Entidad.Usuario;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.Repositorio.FuenteRepository;
+import cl.rac.gesprub.Repositorio.UsuarioRepository;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
 import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
 import org.springframework.transaction.annotation.Transactional;
+import cl.rac.gesprub.exception.ImportValidationException;
 
 @Service
 public class CasoService {
+	
+	@Autowired
+    private UsuarioRepository usuarioRepository;
 	
 	@Autowired
     private CasoRepository casoRepository;
@@ -33,6 +46,9 @@ public class CasoService {
 	
 	@Autowired
     private FuenteRepository fuenteRepository;
+	
+	@Autowired
+    private EstadoModificacionRepository estadoModificacionRepository;
 	
 	public Caso createCaso(Caso caso) {
         return casoRepository.save(caso);
@@ -303,5 +319,99 @@ public class CasoService {
     public List<String> getRutsUnicosPorCaso(int idCaso) {
 		return evidenciaRepository.findDistinctRutByIdCaso(idCaso);
 	}
+    
+	 // Metodo de importacion de casos
+    @Transactional(rollbackFor = Exception.class) // Si algo falla, revierte todos los cambios
+    public void importarCasos(List<CasoImportDTO> casosDto, int idComponente) {
+
+        List<ValidationErrorDTO> errores = new ArrayList<>();
+        
+        // --- 1. OPTIMIZACIÓN: Cargar catálogos una sola vez ---
+        
+        Map<String, EstadoModificacion> estadosPorNombre = estadoModificacionRepository.findAll()
+                .stream()
+                .collect(Collectors.toMap(EstadoModificacion::getNombre, em -> em));
+
+        Map<String, Fuente> fuentesPorNombre = fuenteRepository.findAll()
+                .stream()
+                .collect(Collectors.toMap(Fuente::getNombre_fuente, f -> f));
+        
+        Map<Long, Usuario> usuariosPorId = usuarioRepository.findAll()
+                .stream()
+                .collect(Collectors.toMap(Usuario::getIdUsuario, u -> u));
+
+        List<Caso> nuevosCasos = new ArrayList<>();
+
+        // --- 2. VALIDACIÓN Y TRANSFORMACIÓN ---
+        for (int i = 0; i < casosDto.size(); i++) {
+            CasoImportDTO dto = casosDto.get(i);
+            int fila = i + 1; // Fila legible para el usuario
+
+            // Validar Estado de Modificación
+            EstadoModificacion estado = estadosPorNombre.get(dto.getNombre_estado_modificacion());
+            if (estado == null) {
+                errores.add(new ValidationErrorDTO(fila, "nombre_estado_modificacion", "El Estado Modificación no es válido.", dto.getNombre_estado_modificacion()));
+            }
+            // Validar que el usuario creador exista
+            if (dto.getId_usuario_creador() == null) {
+                 errores.add(new ValidationErrorDTO(fila, "id_usuario_creador", "El ID del usuario creador no puede ser nulo.", null));
+            } else if (!usuariosPorId.containsKey(dto.getId_usuario_creador().longValue())) {
+                errores.add(new ValidationErrorDTO(fila, "id_usuario_creador", "El usuario con el ID proporcionado no existe.", String.valueOf(dto.getId_usuario_creador())));
+            }
+
+            // Procesar Fuentes
+            Set<Fuente> fuentesParaElCaso = new HashSet<>();
+            if (dto.getNombres_fuentes() != null && !dto.getNombres_fuentes().isBlank()) {
+                // Asumimos que las fuentes vienen separadas por comas. Ej: "RF-101, CU-05"
+                String[] nombresFuente = dto.getNombres_fuentes().split(",");
+                for (String nombre : nombresFuente) {
+                    String nombreTrim = nombre.trim();
+                    if (!nombreTrim.isEmpty()) {
+                        Fuente fuenteExistente = fuentesPorNombre.get(nombreTrim);
+                        if (fuenteExistente != null) {
+                            fuentesParaElCaso.add(fuenteExistente);
+                        } else {
+                        	// Si la fuente no existe, registramos un error y no la creamos.
+                            errores.add(new ValidationErrorDTO(
+                                fila, 
+                                "nombres_fuentes", 
+                                "La fuente '" + nombreTrim + "' no existe. Debe crearla primero.", 
+                                dto.getNombres_fuentes()
+                            ));
+                        }
+                    }
+                }
+            }
+
+            // Si no hay errores para esta fila, preparamos el nuevo objeto Caso
+            if (errores.isEmpty()) {
+                Caso nuevoCaso = new Caso();
+                nuevoCaso.setNombre_caso(dto.getNombre_caso());
+                nuevoCaso.setDescripcion_caso(dto.getDescripcion_caso());
+                nuevoCaso.setVersion(dto.getVersion());
+                nuevoCaso.setIdComponente(idComponente);
+                nuevoCaso.setId_estado_modificacion(estado.getId_estado_modificacion().intValue());
+                nuevoCaso.setFuentes(fuentesParaElCaso);
+                nuevoCaso.setActivo(1);
+                nuevoCaso.setId_usuario_creador(dto.getId_usuario_creador());
+                nuevoCaso.setAnio(Year.now().getValue()); // Asignamos el año actual por defecto
+                
+                nuevosCasos.add(nuevoCaso);
+            }
+        }
+
+        // --- 3. DECISIÓN FINAL ---
+        if (!errores.isEmpty()) {
+            // Si encontramos algún error, lanzamos una excepción con la lista detallada
+            // La crearemos en el siguiente paso. Por ahora, puedes usar una RuntimeException
+        	throw new ImportValidationException("Error de validación durante la importación. No se guardó ningún caso.", errores); 
+            // throw new ImportValidationException("Error de validación durante la importación.", errores);
+        } else {
+            // Si todo está perfecto, guardamos todos los nuevos casos en la base de datos
+            casoRepository.saveAll(nuevosCasos);
+        }
+    }
+    
+    
 
 }
