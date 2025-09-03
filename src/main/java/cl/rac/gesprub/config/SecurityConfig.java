@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/caso/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/caso/**").authenticated() 
                 .requestMatchers(HttpMethod.PATCH, "/api/evidencia/**").authenticated()
+                .requestMatchers(HttpMethod.PATCH, "/api/usuario/**").authenticated()
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 

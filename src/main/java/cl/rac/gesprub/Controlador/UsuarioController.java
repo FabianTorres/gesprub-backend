@@ -64,5 +64,15 @@ public class UsuarioController {
         usuarioService.cambiarPassword(dto);
         return ResponseEntity.ok().build(); // Devuelve una respuesta 200 OK sin cuerpo
     }
+	
+	/**
+     * Actualiza la fecha del último login para un usuario específico.
+     */
+    @PatchMapping("/{id}/ultimo-login")
+    public ResponseEntity<Void> updateUltimoLogin(@PathVariable Long id) {
+        usuarioService.updateUltimoLogin(id);
+        // Devolvemos una respuesta 200 OK sin cuerpo para indicar que la operación fue exitosa.
+        return ResponseEntity.ok().build();
+    }
 
 }
