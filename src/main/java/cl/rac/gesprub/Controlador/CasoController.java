@@ -13,14 +13,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.CasoService;
+import cl.rac.gesprub.Servicio.UsuarioService;
+import cl.rac.gesprub.dto.AsignarCasoDTO;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import cl.rac.gesprub.dto.MuroDTO;
 import cl.rac.gesprub.Entidad.Fuente;
 import java.util.Set;
 import cl.rac.gesprub.dto.FuenteDTO;
@@ -34,6 +39,9 @@ public class CasoController {
 	
 	@Autowired
     private CasoService casoService;
+	
+	@Autowired
+    private UsuarioService usuarioService;
 	
 	@PostMapping
     public Caso createCaso(@RequestBody Caso caso) {
@@ -150,6 +158,40 @@ public class CasoController {
         
         // Si el servicio termina sin lanzar una excepción, la importación fue exitosa.
         return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Devuelve los casos de un componente para el muro Kanban,
+     * separados en backlog y tareas asignadas al usuario logueado.
+     */
+    @GetMapping("/muro")
+    public MuroDTO getMuro(@RequestParam int componenteId) {
+        // Obtenemos el nombre de usuario del token JWT
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        // Obtenemos el ID del usuario a partir de su nombre
+        Long usuarioId = usuarioService.getUsuarioByNombreUsuario(username).getIdUsuario();
+        
+        return casoService.getMuroData(componenteId, usuarioId);
+    }
+    
+    /**
+     * Asigna un caso de prueba a un usuario.
+     */
+    @PatchMapping("/{id}/asignar")
+    public CasoDTO asignarCaso(@PathVariable Long id, @Valid @RequestBody AsignarCasoDTO body) {
+        Caso casoActualizado = casoService.asignarUsuario(id, body.getUsuarioId());
+        return new CasoDTO(casoActualizado); // Devolvemos el caso actualizado
+    }
+    
+    /**
+     * Desasigna un caso, moviéndolo de vuelta al backlog.
+     */
+    @PatchMapping("/{id}/desasignar")
+    public CasoDTO desasignarCaso(@PathVariable Long id) {
+        Caso casoActualizado = casoService.desasignarUsuario(id);
+        return new CasoDTO(casoActualizado);
     }
 
 
