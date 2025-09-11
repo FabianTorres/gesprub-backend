@@ -1,6 +1,7 @@
 package cl.rac.gesprub.Controlador;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,7 @@ import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import cl.rac.gesprub.dto.KanbanDTO;
 import cl.rac.gesprub.dto.MuroDTO;
 import cl.rac.gesprub.Entidad.Fuente;
 import java.util.Set;
@@ -192,6 +194,15 @@ public class CasoController {
     public CasoDTO desasignarCaso(@PathVariable Long id) {
         Caso casoActualizado = casoService.desasignarUsuario(id);
         return new CasoDTO(casoActualizado);
+    }
+    
+    /**
+     * Devuelve los casos para el tablero Kanban de un proyecto,
+     * opcionalmente filtrado por usuario.
+     */
+    @GetMapping("/kanban/proyecto")
+    public KanbanDTO getKanban(@RequestParam Long proyectoId, @RequestParam Optional<Long> usuarioId) {
+        return casoService.getKanbanData(proyectoId, usuarioId);
     }
 
 

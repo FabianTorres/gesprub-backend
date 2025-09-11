@@ -2,7 +2,9 @@ package cl.rac.gesprub.Servicio;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,6 +36,7 @@ import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
 import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import cl.rac.gesprub.dto.KanbanDTO;
 import cl.rac.gesprub.dto.MuroDTO;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -409,7 +412,10 @@ public class CasoService {
                 nuevoCaso.setFuentes(fuentesParaElCaso);
                 nuevoCaso.setActivo(1);
                 nuevoCaso.setId_usuario_creador(dto.getId_usuario_creador());
-                nuevoCaso.setAnio(Year.now().getValue()); // Asignamos el año actual por defecto
+                nuevoCaso.setAnio(Year.now().getValue());
+                nuevoCaso.setPasos(dto.getPasos());
+                nuevoCaso.setPrecondiciones(dto.getPrecondiciones());
+                nuevoCaso.setResultado_esperado(dto.getResultado_esperado());
                 
                 nuevosCasos.add(nuevoCaso);
             }
@@ -489,6 +495,11 @@ public class CasoService {
         // 3. Actualizamos el campo y guardamos.
         caso.setIdUsuarioAsignado(usuarioId.intValue());
         
+        // Al asignar, si no tiene estado, lo ponemos en "Por Hacer"
+        if (caso.getEstadoKanban() == null || caso.getEstadoKanban().isEmpty()) {
+            caso.setEstadoKanban("Por Hacer");
+        }
+        
         return casoRepository.save(caso);
     }
     
@@ -507,6 +518,42 @@ public class CasoService {
         caso.setIdUsuarioAsignado(null);
         
         return casoRepository.save(caso);
+    }
+    
+    
+    /**
+     * NUEVO MÉTODO
+     * Obtiene y agrupa los casos para el tablero Kanban.
+     */
+    public KanbanDTO getKanbanData(Long proyectoId, Optional<Long> usuarioId) {
+        // 1. Obtenemos los IDs de todos los componentes del proyecto
+        List<Integer> idsComponentesDelProyecto = componenteRepository.findComponenteIdsByProyectoId(proyectoId);
+        if (idsComponentesDelProyecto.isEmpty()) {
+            return new KanbanDTO(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+
+        // 2. Buscamos todos los casos asignados del proyecto.
+        List<Caso> casosAsignados = casoRepository.findByActivoAndIdUsuarioAsignadoIsNotNullAndIdComponenteIn(1, idsComponentesDelProyecto);
+        
+        // 3. (Opcional) Filtramos por usuario si se proporciona el ID.
+        Stream<Caso> streamCasos = casosAsignados.stream();
+        if (usuarioId.isPresent()) {
+            streamCasos = streamCasos.filter(c -> usuarioId.get().equals(Long.valueOf(c.getIdUsuarioAsignado())));
+        }
+
+        // 4. Agrupamos los casos por su estado Kanban.
+        Map<String, List<CasoDTO>> casosAgrupados = streamCasos
+            .map(caso -> new CasoDTO(caso)) // Convertimos a DTO
+            .collect(Collectors.groupingBy(
+                casoDto -> casoDto.getEstadoKanban() != null ? casoDto.getEstadoKanban() : "Desconocido"
+            ));
+
+        // 5. Devolvemos la respuesta en la estructura final.
+        return new KanbanDTO(
+            casosAgrupados.getOrDefault("Por Hacer", new ArrayList<>()),
+            casosAgrupados.getOrDefault("Completado", new ArrayList<>()),
+            casosAgrupados.getOrDefault("Con Error", new ArrayList<>())
+        );
     }
     
     

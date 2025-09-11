@@ -25,6 +25,11 @@ public class CasoImportDTO {
     private String nombres_fuentes;
     
     private Integer id_usuario_creador;
+    
+    private String precondiciones;
+    
+    private String pasos;
+    
+    private String resultado_esperado;
 
-    // Podríamos añadir más campos si fueran necesarios para la importación.
 }
