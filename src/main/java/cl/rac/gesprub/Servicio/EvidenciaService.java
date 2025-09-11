@@ -6,10 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import cl.rac.gesprub.Entidad.EstadoEvidencia;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.Repositorio.CasoRepository;
+import cl.rac.gesprub.Repositorio.EstadoEvidenciaRepository;
+
 import java.sql.Timestamp;
+import java.util.Optional;
 
 
 @Service
@@ -21,9 +25,49 @@ public class EvidenciaService {
 	@Autowired
     private CasoRepository casoRepository;
 	
+	@Autowired
+    private EstadoEvidenciaRepository estadoEvidenciaRepository;
+	
+	
 	public Evidencia createEvidencia(Evidencia evidencia) {
+		
+		// --- LÓGICA DE TRADUCCIÓN AÑADIDA ---
+        // 1. Buscamos el objeto EstadoEvidencia usando el ID que nos envió el frontend.
+        Optional<EstadoEvidencia> estadoOpt = estadoEvidenciaRepository.findById((long) evidencia.getId_estado_evidencia());
+
+        if (estadoOpt.isPresent()) {
+            // 2. Si lo encontramos, extraemos el nombre (ej: "OK") y lo asignamos al campo de texto.
+            String nombreEstado = estadoOpt.get().getNombre();
+            evidencia.setEstado_evidencia(nombreEstado);
+        } else {
+            // Opcional: Si el ID no es válido, asignamos un valor por defecto o lanzamos un error.
+            // Por ahora, lo dejamos como lo envía el frontend, lo que probablemente resultará en null.
+            evidencia.setEstado_evidencia(null); 
+        }
+		
 		evidencia.setFechaEvidencia(new Timestamp(System.currentTimeMillis()));
-        return evidenciaRepository.save(evidencia);
+		Evidencia evidenciaGuardada = evidenciaRepository.save(evidencia);
+		
+
+		
+		// --- LÓGICA AÑADIDA PARA ACTUALIZAR KANBAN ---
+        if (evidenciaGuardada.getIdCaso() > 0) {
+            casoRepository.findById((long) evidenciaGuardada.getIdCaso()).ifPresent(caso -> {
+            	
+                if ("OK".equalsIgnoreCase(evidenciaGuardada.getEstado_evidencia())) {
+                    caso.setEstadoKanban("Completado");
+                    casoRepository.save(caso);
+                 
+                } else if ("NK".equalsIgnoreCase(evidenciaGuardada.getEstado_evidencia())) {
+                    caso.setEstadoKanban("Con Error");
+                    casoRepository.save(caso);
+                    
+                }
+            });
+        }
+        
+
+        return evidenciaGuardada;
     }
 
     public List<Evidencia> getAllEvidencias() {

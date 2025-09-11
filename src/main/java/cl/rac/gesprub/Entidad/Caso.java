@@ -58,6 +58,12 @@ public class Caso {
 	
 	private String jp_responsable;
 	
+    @Column(name = "id_usuario_asignado")
+    private Integer idUsuarioAsignado;
+
+    @Column(name = "estado_kanban")
+    private String estadoKanban;
+	
 	 @ManyToMany(fetch = FetchType.LAZY)
 	    @JoinTable(
 	        name = "caso_fuente", // Nombre de la tabla intermedia
@@ -207,6 +213,22 @@ public class Caso {
 
     public void setFuentes(Set<Fuente> fuentes) {
         this.fuentes = fuentes;
+    }
+    
+    public Integer getIdUsuarioAsignado() {
+        return idUsuarioAsignado;
+    }
+
+    public void setIdUsuarioAsignado(Integer idUsuarioAsignado) {
+        this.idUsuarioAsignado = idUsuarioAsignado;
+    }
+
+    public String getEstadoKanban() {
+        return estadoKanban;
+    }
+
+    public void setEstadoKanban(String estadoKanban) {
+        this.estadoKanban = estadoKanban;
     }
 	
 	

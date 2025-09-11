@@ -1,48 +1,53 @@
-# Nombre del flujo de trabajo que aparecerá en la pestaña "Actions" de GitHub
-name: Build and Push to Azure Container Registry
+name: Build and Deploy Backend
 
-# ---- DISPARADOR ----
-# Este flujo de trabajo se ejecutará cada vez que hagas un 'push' a la rama 'main'
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main     # Para producción
+      - develop  # Para certificación
 
-# ---- VARIABLES DE ENTORNO ----
-# Configura estas variables con los nombres de tus recursos en Azure
 env:
-  AZURE_CONTAINER_REGISTRY: 'registrogesprubbackend' # 👈 REEMPLAZA con el nombre de tu ACR
-  IMAGE_NAME: 'gesprub-backend'          # 👈 REEMPLAZA con el nombre que quieras para tu imagen
+  # Define los nombres de tus recursos de Azure
+  # Los valores reales se tomarán de los secretos
+  AZURE_CONTAINER_REGISTRY_CERT: 'registrogesprubbackend' #  Reemplaza si es diferente
+  AZURE_CONTAINER_REGISTRY_PROD: 'registrogesprubprod'    #  Reemplaza si es diferente
+  IMAGE_NAME: 'gesprub-backend'
 
-# ---- TRABAJOS (JOBS) ----
-# Define una secuencia de trabajos a ejecutar
 jobs:
-  build-and-push-image:
-    # El trabajo se ejecutará en una máquina virtual de Ubuntu proporcionada por GitHub
+  build-and-deploy:
     runs-on: ubuntu-latest
     
-    # Pasos que se ejecutarán en orden
+    # Esta sección elige el entorno de GitHub (y sus secretos) basado en la rama
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'certification' }}
+
     steps:
-    # 1. Clona tu repositorio en la máquina virtual
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Inicia sesión en tu Azure Container Registry
+    # Determina el nombre del registro a usar basado en la rama
+    - name: Set ACR name for environment
+      run: |
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "ACR_NAME=${{ env.AZURE_CONTAINER_REGISTRY_PROD }}" >> $GITHUB_ENV
+        else
+          echo "ACR_NAME=${{ env.AZURE_CONTAINER_REGISTRY_CERT }}" >> $GITHUB_ENV
+        fi
+
+    # Inicia sesión usando los secretos del entorno correspondiente (repo o 'production')
     - name: Log in to Azure Container Registry
       uses: docker/login-action@v3
       with:
-        registry: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+        registry: ${{ env.ACR_NAME }}.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
-    # 3. Construye y sube la imagen Docker
+    # Construye y sube la imagen al registro correcto
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        # Etiqueta la imagen con un número único de ejecución de GitHub (ej: miacrúnico.azurecr.io/gesprub-backend:12)
         tags: |
-          ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
-          ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.run_number }}
-        # También la etiqueta como la más reciente ('latest')
-        labels: "run-number=${{ github.run_number }}"
+          ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.run_number }}

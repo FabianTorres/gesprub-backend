@@ -27,6 +27,9 @@ public class CasoDTO {
     private String caso_de_uso;
     private String jp_responsable;
     private Set<FuenteDTO> fuentes;
+    private Integer idUsuarioAsignado;
+    private String estadoKanban;
+    private String nombre_componente;
     
     // Un constructor que facilita la conversión desde la entidad
     public CasoDTO(Caso caso) {
@@ -46,6 +49,8 @@ public class CasoDTO {
         this.resultado_esperado = caso.getResultado_esperado();
         this.caso_de_uso = caso.getCaso_de_uso();
         this.jp_responsable = caso.getJp_responsable();
+        this.idUsuarioAsignado = caso.getIdUsuarioAsignado();
+        this.estadoKanban = caso.getEstadoKanban();
         
         // --- LÓGICA DE CONVERSIÓN PARA LAS FUENTES ---
         if (caso.getFuentes() != null) {
@@ -53,5 +58,10 @@ public class CasoDTO {
                                 .map(FuenteDTO::new) // Convierte cada entidad Fuente a FuenteDTO
                                 .collect(Collectors.toSet());
         }
+    }
+    
+    public CasoDTO(Caso caso, String nombreComponente) {
+        this(caso); // Llama al constructor original para no repetir código
+        this.nombre_componente = nombreComponente;
     }
 }

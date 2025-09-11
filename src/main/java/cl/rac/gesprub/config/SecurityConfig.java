@@ -59,7 +59,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/proyecto").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/componente").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/caso/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/caso/**").authenticated() 
                 .requestMatchers(HttpMethod.PATCH, "/api/evidencia/**").authenticated()
+                .requestMatchers(HttpMethod.PATCH, "/api/usuario/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/dashboard").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/caso/**").authenticated() 
+                .requestMatchers(HttpMethod.PATCH, "/api/casos/**").authenticated()
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 

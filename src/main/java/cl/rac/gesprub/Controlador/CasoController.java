@@ -1,6 +1,7 @@
 package cl.rac.gesprub.Controlador;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,17 +14,26 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Servicio.CasoService;
+import cl.rac.gesprub.Servicio.UsuarioService;
+import cl.rac.gesprub.dto.AsignarCasoDTO;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
+import cl.rac.gesprub.dto.KanbanDTO;
+import cl.rac.gesprub.dto.MuroDTO;
 import cl.rac.gesprub.Entidad.Fuente;
 import java.util.Set;
 import cl.rac.gesprub.dto.FuenteDTO;
+import cl.rac.gesprub.dto.CasoImportDTO; 
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/caso")
@@ -31,6 +41,9 @@ public class CasoController {
 	
 	@Autowired
     private CasoService casoService;
+	
+	@Autowired
+    private UsuarioService usuarioService;
 	
 	@PostMapping
     public Caso createCaso(@RequestBody Caso caso) {
@@ -127,6 +140,69 @@ public class CasoController {
     public CasoDTO sincronizarFuentes(@PathVariable Long idCaso, @RequestBody List<Long> idsFuente) {
         Caso casoActualizado = casoService.sincronizarFuentesParaCaso(idCaso, idsFuente);
         return new CasoDTO(casoActualizado); // Devolvemos un DTO para ser consistentes
+    }
+	
+	/**
+     * Importa una lista de casos para un componente específico.
+     * Realiza una validación completa antes de guardar. Si un caso falla, ninguno se guarda.
+     *
+     * @param casosAImportar La lista de casos desde el body del request.
+     * @param idComponente El ID del componente al que pertenecerán los nuevos casos.
+     * @return Una respuesta 200 OK si la importación es exitosa.
+     */
+    // Usamos una ruta diferente para no chocar con el POST existente para un solo caso.
+    @PostMapping("/importar") 
+    public ResponseEntity<Void> importarCasos(
+            @Valid @RequestBody List<CasoImportDTO> casosAImportar,
+            @RequestParam("id_componente") int idComponente) {
+        
+        casoService.importarCasos(casosAImportar, idComponente);
+        
+        // Si el servicio termina sin lanzar una excepción, la importación fue exitosa.
+        return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Devuelve los casos de un componente para el muro Kanban,
+     * separados en backlog y tareas asignadas al usuario logueado.
+     */
+    @GetMapping("/muro")
+    public MuroDTO getMuro(@RequestParam int componenteId) {
+        // Obtenemos el nombre de usuario del token JWT
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        // Obtenemos el ID del usuario a partir de su nombre
+        Long usuarioId = usuarioService.getUsuarioByNombreUsuario(username).getIdUsuario();
+        
+        return casoService.getMuroData(componenteId, usuarioId);
+    }
+    
+    /**
+     * Asigna un caso de prueba a un usuario.
+     */
+    @PatchMapping("/{id}/asignar")
+    public CasoDTO asignarCaso(@PathVariable Long id, @Valid @RequestBody AsignarCasoDTO body) {
+        Caso casoActualizado = casoService.asignarUsuario(id, body.getUsuarioId());
+        return new CasoDTO(casoActualizado); // Devolvemos el caso actualizado
+    }
+    
+    /**
+     * Desasigna un caso, moviéndolo de vuelta al backlog.
+     */
+    @PatchMapping("/{id}/desasignar")
+    public CasoDTO desasignarCaso(@PathVariable Long id) {
+        Caso casoActualizado = casoService.desasignarUsuario(id);
+        return new CasoDTO(casoActualizado);
+    }
+    
+    /**
+     * Devuelve los casos para el tablero Kanban de un proyecto,
+     * opcionalmente filtrado por usuario.
+     */
+    @GetMapping("/kanban/proyecto")
+    public KanbanDTO getKanban(@RequestParam Long proyectoId, @RequestParam Optional<Long> usuarioId) {
+        return casoService.getKanbanData(proyectoId, usuarioId);
     }
 
 

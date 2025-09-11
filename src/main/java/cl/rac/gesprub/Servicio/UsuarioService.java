@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import java.sql.Timestamp;
 
 import cl.rac.gesprub.Entidad.Autenticacion;
 import cl.rac.gesprub.Entidad.Usuario;
@@ -140,6 +141,23 @@ public class UsuarioService {
         
         // La convertimos al DTO y la devolvemos
         return convertirADto(usuario);
+    }
+    
+    /**
+     * Actualiza la fecha y hora del último login de un usuario a la actual.
+     * @param id_usuario El ID del usuario a actualizar.
+     */
+    @Transactional
+    public void updateUltimoLogin(Long id_usuario) {
+        // Buscamos el usuario en la base de datos.
+        Usuario usuario = usuarioRepository.findById(id_usuario)
+                .orElseThrow(() -> new UsernameNotFoundException("No se encontró un usuario con el id: " + id_usuario));
+        
+        // Actualizamos el campo con la fecha y hora actual del servidor.
+        usuario.setUltimoLogin(new Timestamp(System.currentTimeMillis()));
+        
+        // Guardamos los cambios.
+        usuarioRepository.save(usuario);
     }
 
 }
