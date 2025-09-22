@@ -43,7 +43,9 @@ public class SecurityConfig {
                 		"http://localhost:4200",
                 		"http://localhost:8080", 
                 		"http://10.32.1.11:8080",
-                		"https://nice-coast-0dc38330f.1.azurestaticapps.net"
+                		"https://nice-coast-0dc38330f.1.azurestaticapps.net",
+                		"https://gesprub.cl",
+                		"https://icy-meadow-09dd78d1e.1.azurestaticapps.net"
                 		));
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                 configuration.setAllowedHeaders(List.of("*"));
