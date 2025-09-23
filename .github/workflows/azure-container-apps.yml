@@ -43,5 +43,4 @@ jobs:
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.CONTAINER_APP }}
-        # Asegúrate que tu Service Principal tiene permisos para hacer "pull" de la imagen
         imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
