@@ -1,4 +1,4 @@
-name: Build and Deploy Backend to Production
+name: Build and Deploy to Production
 
 # Se ejecutará solo en cambios a la rama 'main'
 on:
@@ -7,7 +7,7 @@ on:
       - main
 
 env:
-  # Variables para el entorno de producción
+  # Variables para producción
   AZURE_CONTAINER_REGISTRY: 'registrogesprubprod'
   IMAGE_NAME: 'gesprub-backend'
   RESOURCE_GROUP: 'gesprub-prod-rg'
