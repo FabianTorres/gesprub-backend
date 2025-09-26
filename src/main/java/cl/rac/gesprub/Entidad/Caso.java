@@ -13,6 +13,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.util.Set;
+import java.sql.Timestamp;
 
 @Entity
 @Table(name = "caso")
@@ -63,6 +64,9 @@ public class Caso {
 
     @Column(name = "estado_kanban")
     private String estadoKanban;
+    
+    @Column(name = "fecha_asignacion")
+    private Timestamp fechaAsignacion;
 	
 	 @ManyToMany(fetch = FetchType.LAZY)
 	    @JoinTable(
@@ -231,6 +235,13 @@ public class Caso {
         this.estadoKanban = estadoKanban;
     }
 	
+    public Timestamp getFechaAsignacion() {
+        return fechaAsignacion;
+    }
+
+    public void setFechaAsignacion(Timestamp fechaAsignacion) {
+        this.fechaAsignacion = fechaAsignacion;
+    }
 	
 
 }

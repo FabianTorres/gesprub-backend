@@ -106,15 +106,7 @@ public class UsuarioService {
     }
     
     private UsuarioDTO convertirADto(Usuario usuario) {
-        UsuarioDTO dto = new UsuarioDTO();
-        dto.setIdUsuario(usuario.getIdUsuario());
-        dto.setNombreUsuario(usuario.getNombreUsuario());
-        dto.setRolUsuario(usuario.getRolUsuario());
-        dto.setCorreo(usuario.getCorreo());
-        dto.setActivo(usuario.getActivo());
-        dto.setFechaCreacion(usuario.getFechaCreacion());
-        dto.setUltimoLogin(usuario.getUltimoLogin()); // <-- LÍNEA AÑADIDA
-        return dto;
+    	return new UsuarioDTO(usuario);
     }
 
     public List<Usuario> getAllUsuarios() {

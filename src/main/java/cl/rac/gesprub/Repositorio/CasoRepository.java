@@ -42,5 +42,10 @@ public interface CasoRepository extends JpaRepository<Caso, Long>{
      * Busca casos activos, asignados y dentro de una lista de componentes.
      */
     List<Caso> findByActivoAndIdUsuarioAsignadoIsNotNullAndIdComponenteIn(int activo, List<Integer> idComponentes);
-
+    
+    
+    /**
+     * Busca todos los casos activos que pertenecen a una lista de componentes.
+     */
+    List<Caso> findByActivoAndIdComponenteIn(int activo, List<Integer> idComponentes);
 }

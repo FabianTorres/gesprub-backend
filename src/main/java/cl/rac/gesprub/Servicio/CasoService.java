@@ -4,13 +4,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.sql.Timestamp;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Comparator;
+import java.util.function.Function;
 import cl.rac.gesprub.Entidad.EstadoModificacion;
 import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
 import cl.rac.gesprub.dto.CasoImportDTO;
@@ -243,6 +244,7 @@ public class CasoService {
         resultado.setId_estado_modificacion(caso.getId_estado_modificacion());
         resultado.setHistorial(historialItems);
         resultado.setFuente(caso.getFuente());
+        resultado.setId_usuario_asignado(caso.getIdUsuarioAsignado());
         
         // --- LÓGICA DE CONVERSIÓN AÑADIDA ---
         if (caso.getFuentes() != null) {
@@ -495,10 +497,8 @@ public class CasoService {
         // 3. Actualizamos el campo y guardamos.
         caso.setIdUsuarioAsignado(usuarioId.intValue());
         
-        // Al asignar, si no tiene estado, lo ponemos en "Por Hacer"
-        if (caso.getEstadoKanban() == null || caso.getEstadoKanban().isEmpty()) {
-            caso.setEstadoKanban("Por Hacer");
-        }
+        caso.setEstadoKanban("Por Hacer");
+        caso.setFechaAsignacion(new Timestamp(System.currentTimeMillis()));
         
         return casoRepository.save(caso);
     }
@@ -522,33 +522,75 @@ public class CasoService {
     
     
     /**
-     * NUEVO MÉTODO
      * Obtiene y agrupa los casos para el tablero Kanban.
      */
     public KanbanDTO getKanbanData(Long proyectoId, Optional<Long> usuarioId) {
-        // 1. Obtenemos los IDs de todos los componentes del proyecto
+        // 1. Obtener todos los casos activos del proyecto que son relevantes para el Kanban
         List<Integer> idsComponentesDelProyecto = componenteRepository.findComponenteIdsByProyectoId(proyectoId);
         if (idsComponentesDelProyecto.isEmpty()) {
             return new KanbanDTO(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         }
-
-        // 2. Buscamos todos los casos asignados del proyecto.
-        List<Caso> casosAsignados = casoRepository.findByActivoAndIdUsuarioAsignadoIsNotNullAndIdComponenteIn(1, idsComponentesDelProyecto);
+        List<Caso> casosActivosDelProyecto = casoRepository.findByActivoAndIdComponenteIn(1, idsComponentesDelProyecto);
         
-        // 3. (Opcional) Filtramos por usuario si se proporciona el ID.
-        Stream<Caso> streamCasos = casosAsignados.stream();
+        List<Caso> casosParaKanban = casosActivosDelProyecto.stream()
+            .filter(caso -> caso.getIdUsuarioAsignado() != null || "Completado".equals(caso.getEstadoKanban()))
+            .collect(Collectors.toList());
+
+        if (casosParaKanban.isEmpty()) {
+            return new KanbanDTO(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+        
+        // 2. Obtener datos adicionales para el filtrado y enriquecimiento
+        List<Integer> idsCasosParaKanban = casosParaKanban.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
+        
+        List<Evidencia> evidenciasActivas = evidenciaRepository.findByIdCasoIn(idsCasosParaKanban).stream()
+                .filter(e -> e.getActivo() == 1).collect(Collectors.toList());
+        
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasActivas.stream()
+                .collect(Collectors.toMap(
+                    Evidencia::getIdCaso,
+                    Function.identity(),
+                    (e1, e2) -> e1.getFechaEvidencia().after(e2.getFechaEvidencia()) ? e1 : e2
+                ));
+
+        Map<Integer, String> mapaNombresComponentes = componenteRepository.findAllById(
+            casosParaKanban.stream().map(c -> (long) c.getIdComponente()).collect(Collectors.toSet())
+        ).stream().collect(Collectors.toMap(c -> c.getId_componente().intValue(), Componente::getNombre_componente));
+
+        // 3. APLICAR EL FILTRO DE USUARIO CON LA LÓGICA CORREGIDA
+        List<Caso> casosFiltrados;
         if (usuarioId.isPresent()) {
-            streamCasos = streamCasos.filter(c -> usuarioId.get().equals(Long.valueOf(c.getIdUsuarioAsignado())));
+            Long uid = usuarioId.get();
+            casosFiltrados = casosParaKanban.stream()
+                .filter(caso -> {
+                    // --- CORRECCIÓN AQUÍ ---
+                    // Condición 1: El caso está asignado al usuario (con comprobación de nulidad).
+                    boolean estaAsignadoAlUsuario = caso.getIdUsuarioAsignado() != null 
+                                                    && uid.equals(Long.valueOf(caso.getIdUsuarioAsignado()));
+
+                    // Condición 2: El caso fue completado por el usuario.
+                    boolean fueCompletadoPorUsuario = false;
+                    if ("Completado".equals(caso.getEstadoKanban())) {
+                        Evidencia ultimaEvidencia = ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue());
+                        if (ultimaEvidencia != null && ultimaEvidencia.getUsuarioEjecutante() != null) {
+                            fueCompletadoPorUsuario = uid.equals(ultimaEvidencia.getUsuarioEjecutante().getIdUsuario());
+                        }
+                    }
+                    return estaAsignadoAlUsuario || fueCompletadoPorUsuario;
+                })
+                .collect(Collectors.toList());
+        } else {
+            // Si no se filtra por usuario, se usan todos los casos del Kanban.
+            casosFiltrados = casosParaKanban;
         }
 
-        // 4. Agrupamos los casos por su estado Kanban.
-        Map<String, List<CasoDTO>> casosAgrupados = streamCasos
-            .map(caso -> new CasoDTO(caso)) // Convertimos a DTO
+        // 4. Agrupar los casos resultantes y construir la respuesta
+        Map<String, List<CasoDTO>> casosAgrupados = casosFiltrados.stream()
+            .map(caso -> new CasoDTO(caso, mapaNombresComponentes.get(caso.getIdComponente()), ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue())))
             .collect(Collectors.groupingBy(
                 casoDto -> casoDto.getEstadoKanban() != null ? casoDto.getEstadoKanban() : "Desconocido"
             ));
 
-        // 5. Devolvemos la respuesta en la estructura final.
         return new KanbanDTO(
             casosAgrupados.getOrDefault("Por Hacer", new ArrayList<>()),
             casosAgrupados.getOrDefault("Completado", new ArrayList<>()),

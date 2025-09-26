@@ -16,6 +16,7 @@ public class HistorialDTO {
     private String fuente;
     private int id_estado_modificacion;
     private Set<FuenteDTO> fuentes;
+    private Integer id_usuario_asignado;
     
     
     // Lista de Evidencias

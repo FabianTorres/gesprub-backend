@@ -31,7 +31,6 @@ public class EvidenciaService {
 	
 	public Evidencia createEvidencia(Evidencia evidencia) {
 		
-		// --- LÓGICA DE TRADUCCIÓN AÑADIDA ---
         // 1. Buscamos el objeto EstadoEvidencia usando el ID que nos envió el frontend.
         Optional<EstadoEvidencia> estadoOpt = estadoEvidenciaRepository.findById((long) evidencia.getId_estado_evidencia());
 
@@ -50,12 +49,13 @@ public class EvidenciaService {
 		
 
 		
-		// --- LÓGICA AÑADIDA PARA ACTUALIZAR KANBAN ---
+		// Actualizar KANBAN
         if (evidenciaGuardada.getIdCaso() > 0) {
             casoRepository.findById((long) evidenciaGuardada.getIdCaso()).ifPresent(caso -> {
             	
                 if ("OK".equalsIgnoreCase(evidenciaGuardada.getEstado_evidencia())) {
                     caso.setEstadoKanban("Completado");
+                    caso.setIdUsuarioAsignado(null); // Desasignamos el caso
                     casoRepository.save(caso);
                  
                 } else if ("NK".equalsIgnoreCase(evidenciaGuardada.getEstado_evidencia())) {

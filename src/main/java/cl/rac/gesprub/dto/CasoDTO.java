@@ -1,10 +1,13 @@
 package cl.rac.gesprub.dto;
 
 import cl.rac.gesprub.Entidad.Caso;
+import cl.rac.gesprub.Entidad.Evidencia;
+import cl.rac.gesprub.Entidad.Usuario;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.sql.Timestamp;
 
 @Getter
 @Setter
@@ -30,6 +33,8 @@ public class CasoDTO {
     private Integer idUsuarioAsignado;
     private String estadoKanban;
     private String nombre_componente;
+    private Timestamp fechaMovimientoKanban;
+    private UsuarioDTO usuarioEjecutante;
     
     // Un constructor que facilita la conversión desde la entidad
     public CasoDTO(Caso caso) {
@@ -60,8 +65,28 @@ public class CasoDTO {
         }
     }
     
+    public CasoDTO(Caso caso, String nombreComponente, Evidencia ultimaEvidencia) {
+        this(caso, nombreComponente); // Llama al constructor de arriba
+        
+        if ("Por Hacer".equals(caso.getEstadoKanban())) {
+            this.fechaMovimientoKanban = caso.getFechaAsignacion();
+            this.usuarioEjecutante = null;
+        } else if ("Completado".equals(caso.getEstadoKanban()) || "Con Error".equals(caso.getEstadoKanban())) {
+            if (ultimaEvidencia != null) {
+                this.fechaMovimientoKanban = ultimaEvidencia.getFechaEvidencia();
+                if (ultimaEvidencia.getUsuarioEjecutante() != null) {
+                    this.usuarioEjecutante = new UsuarioDTO(ultimaEvidencia.getUsuarioEjecutante());
+                }
+            }
+        }
+    }
+    
     public CasoDTO(Caso caso, String nombreComponente) {
         this(caso); // Llama al constructor original para no repetir código
         this.nombre_componente = nombreComponente;
+    }
+    
+    public CasoDTO(Usuario usuario) {
+        // Este constructor es solo para que compile el de arriba, puedes ajustarlo si es necesario
     }
 }
