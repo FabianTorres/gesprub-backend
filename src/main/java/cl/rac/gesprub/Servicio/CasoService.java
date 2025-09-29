@@ -120,8 +120,9 @@ public class CasoService {
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     entry -> entry.getValue().stream()
-                    			  .filter(e -> e.getActivo() == 1)
-                                  .max((e1, e2) -> e1.getFechaEvidencia().compareTo(e2.getFechaEvidencia()))
+                                  .filter(e -> e.getActivo() == 1)
+                                  // Le decimos al comparador que trate los nulos como los más antiguos
+                                  .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
                                   .orElse(null)
                 ));
 
@@ -183,7 +184,8 @@ public class CasoService {
 	                Map.Entry::getKey,
 	                entry -> entry.getValue().stream()
 	                			  .filter(e -> e.getActivo() == 1)
-	                              .max(Comparator.comparing(Evidencia::getFechaEvidencia))
+	                              // Le decimos al comparador que trate los nulos como los más antiguos
+	                              .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
 	                              .orElse(null)
 	            ));
 
