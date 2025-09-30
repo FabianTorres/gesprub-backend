@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.function.Function;
 import cl.rac.gesprub.Entidad.EstadoModificacion;
 import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
@@ -116,24 +117,31 @@ public class CasoService {
                 ));
 
         // 6. Encontramos la última evidencia para cada caso.
-        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasPorCaso.entrySet().stream()
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
+        evidenciasPorCaso.forEach((idDelCaso, listaDeEvidencias) -> {
+            listaDeEvidencias.stream()
+                .filter(e -> e.getActivo() == 1)
+                .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .ifPresent(ultima -> ultimaEvidenciaPorCaso.put(idDelCaso, ultima));
+        });
+        
+        Set<Long> idsDeComponentes = casos.stream().map(c -> (long) c.getIdComponente()).collect(Collectors.toSet());
+        Map<Integer, String> mapaNombresComponentes = componenteRepository.findAllById(idsDeComponentes).stream()
                 .collect(Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry -> entry.getValue().stream()
-                                  .filter(e -> e.getActivo() == 1)
-                                  // Le decimos al comparador que trate los nulos como los más antiguos
-                                  .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
-                                  .orElse(null)
+                    c -> c.getId_componente().intValue(), 
+                    c -> c.getNombre_componente() != null ? c.getNombre_componente() : "Sin Nombre"
                 ));
 
         // 7. Construimos la respuesta final, pasando los 3 parámetros al constructor del DTO.
         return casos.stream()
-            .map(caso -> new CasoConEvidenciaDTO(
-                caso,
-                ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
-                rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet())
-            ))
-            .collect(Collectors.toList());
+                .map(caso -> new CasoConEvidenciaDTO(
+                    caso,
+                    // Usamos getOrDefault para manejar casos sin evidencia activa (devuelve null de forma segura)
+                    ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
+                    rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet()),
+                    mapaNombresComponentes
+                ))
+                .collect(Collectors.toList());
         
 
     }
@@ -179,25 +187,24 @@ public class CasoService {
                 ));
 
 	    // 7. Encontramos la última evidencia activa para cada caso.
-	    Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasPorCaso.entrySet().stream()
-	            .collect(Collectors.toMap(
-	                Map.Entry::getKey,
-	                entry -> entry.getValue().stream()
-	                			  .filter(e -> e.getActivo() == 1)
-	                              // Le decimos al comparador que trate los nulos como los más antiguos
-	                              .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
-	                              .orElse(null)
-	            ));
+	    Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
+        evidenciasPorCaso.forEach((idDelCaso, listaDeEvidencias) -> {
+            listaDeEvidencias.stream()
+                .filter(e -> e.getActivo() == 1)
+                .max(Comparator.comparing(Evidencia::getFechaEvidencia, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .ifPresent(ultima -> ultimaEvidenciaPorCaso.put(idDelCaso, ultima));
+        });
 
 	    // 8. Construimos la respuesta final usando el nuevo constructor de CasoConEvidenciaDTO.
-	    return casos.stream()
-	        .map(caso -> new CasoConEvidenciaDTO(
-	            caso,
-	            ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
-	            rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet()),
-                mapaNombresComponentes // <--- Pasamos el mapa con los nombres
-	        ))
-	        .collect(Collectors.toList());
+        return casos.stream()
+                .map(caso -> new CasoConEvidenciaDTO(
+                    caso,
+                    // Usamos getOrDefault para manejar casos sin evidencia activa (devuelve null de forma segura)
+                    ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
+                    rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet()),
+                    mapaNombresComponentes
+                ))
+                .collect(Collectors.toList());
     }
     
     public HistorialDTO getHistorialPorCaso(int idCaso) {
