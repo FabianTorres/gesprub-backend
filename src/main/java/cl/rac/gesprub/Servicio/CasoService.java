@@ -32,16 +32,23 @@ import cl.rac.gesprub.Repositorio.ComponenteRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.Repositorio.FuenteRepository;
 import cl.rac.gesprub.Repositorio.UsuarioRepository;
+import cl.rac.gesprub.dto.CasoActualizarLoteDTO;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
+import cl.rac.gesprub.dto.CasoCrearLoteDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
 import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
 import cl.rac.gesprub.dto.KanbanDTO;
+import cl.rac.gesprub.dto.LoteErrorDetalleDTO;
+import cl.rac.gesprub.dto.LoteExitoResponseDTO;
 import cl.rac.gesprub.dto.MuroDTO;
+import cl.rac.gesprub.dto.ProcesarLoteRequestDTO;
 
 import org.springframework.transaction.annotation.Transactional;
+
+import cl.rac.gesprub.exception.BatchValidationException;
 import cl.rac.gesprub.exception.ImportValidationException;
 
 @Service
@@ -604,6 +611,138 @@ public class CasoService {
             casosAgrupados.getOrDefault("Por Hacer", new ArrayList<>()),
             casosAgrupados.getOrDefault("Completado", new ArrayList<>()),
             casosAgrupados.getOrDefault("Con Error", new ArrayList<>())
+        );
+    }
+    
+    
+    @Transactional(rollbackFor = Exception.class)
+    public LoteExitoResponseDTO procesarLote(ProcesarLoteRequestDTO lote) {
+        List<LoteErrorDetalleDTO> errores = new ArrayList<>();
+        
+        // --- 1. OPTIMIZACIÓN: Cargar catálogos una sola vez ---
+        Map<String, EstadoModificacion> estadosPorNombre = estadoModificacionRepository.findAll().stream()
+            .collect(Collectors.toMap(EstadoModificacion::getNombre, Function.identity()));
+        Map<String, Fuente> fuentesPorNombre = fuenteRepository.findAll().stream()
+            .collect(Collectors.toMap(Fuente::getNombre_fuente, Function.identity()));
+
+        List<Caso> casosAGuardar = new ArrayList<>();
+        int creadosCount = 0;
+        int actualizadosCount = 0;
+
+        // --- 2. PROCESAR CASOS PARA CREAR ---
+        if (lote.getCasosParaCrear() != null) {
+            for (CasoCrearLoteDTO dto : lote.getCasosParaCrear()) {
+                EstadoModificacion estado = estadosPorNombre.get(dto.getNombre_estado_modificacion());
+                if (estado == null) {
+                    errores.add(new LoteErrorDetalleDTO("CREACION", "Fila con nombre '" + dto.getNombre_caso() + "'", "El estado de modificación '" + dto.getNombre_estado_modificacion() + "' no es válido."));
+                    continue;
+                }
+
+                Set<Fuente> fuentesParaElCaso = new HashSet<>();
+                if (dto.getNombres_fuentes() != null && !dto.getNombres_fuentes().isBlank()) {
+                    String[] nombresFuente = dto.getNombres_fuentes().split(",");
+                    for (String nombre : nombresFuente) {
+                        String nombreTrim = nombre.trim();
+                        if (!nombreTrim.isEmpty()) {
+                            Fuente fuenteExistente = fuentesPorNombre.get(nombreTrim);
+                            if (fuenteExistente != null) {
+                                fuentesParaElCaso.add(fuenteExistente);
+                            } else {
+                                errores.add(new LoteErrorDetalleDTO("CREACION", "Fila con nombre '" + dto.getNombre_caso() + "'", "La fuente '" + nombreTrim + "' no existe."));
+                            }
+                        }
+                    }
+                }
+                
+                Caso nuevoCaso = new Caso();
+                nuevoCaso.setNombre_caso(dto.getNombre_caso());
+                nuevoCaso.setDescripcion_caso(dto.getDescripcion_caso());
+                nuevoCaso.setVersion(dto.getVersion());
+                nuevoCaso.setIdComponente(dto.getId_componente());
+                nuevoCaso.setId_usuario_creador(dto.getId_usuario_creador());
+                if (dto.getJp_responsable() != null) nuevoCaso.setJp_responsable(String.valueOf(dto.getJp_responsable()));
+                nuevoCaso.setId_estado_modificacion(estado.getId_estado_modificacion().intValue());
+                nuevoCaso.setFuentes(fuentesParaElCaso);
+                nuevoCaso.setPrecondiciones(dto.getPrecondiciones());
+                nuevoCaso.setPasos(dto.getPasos());
+                nuevoCaso.setResultado_esperado(dto.getResultado_esperado());
+                nuevoCaso.setActivo(1);
+                nuevoCaso.setAnio(Year.now().getValue());
+                
+                casosAGuardar.add(nuevoCaso);
+                creadosCount++;
+            }
+        }
+        
+        // --- 3. PROCESAR CASOS PARA ACTUALIZAR ---
+        if (lote.getCasosParaActualizar() != null) {
+            for (CasoActualizarLoteDTO dto : lote.getCasosParaActualizar()) {
+                Optional<Caso> casoOpt = casoRepository.findById(dto.getId_caso());
+                if (casoOpt.isEmpty()) {
+                    errores.add(new LoteErrorDetalleDTO("ACTUALIZACION", "ID Caso " + dto.getId_caso(), "El caso con el ID proporcionado no fue encontrado."));
+                    continue;
+                }
+                
+                Caso casoExistente = casoOpt.get();
+                
+                if (dto.getActivo() != null) {
+                    casoExistente.setActivo(dto.getActivo());
+                }
+                
+                if (dto.getNombre_caso() != null) casoExistente.setNombre_caso(dto.getNombre_caso());
+                if (dto.getDescripcion_caso() != null) casoExistente.setDescripcion_caso(dto.getDescripcion_caso());
+                if (dto.getVersion() != null) casoExistente.setVersion(dto.getVersion());
+                if (dto.getPrecondiciones() != null) casoExistente.setPrecondiciones(dto.getPrecondiciones());
+                if (dto.getPasos() != null) casoExistente.setPasos(dto.getPasos());
+                if (dto.getResultado_esperado() != null) casoExistente.setResultado_esperado(dto.getResultado_esperado());
+                if (dto.getJp_responsable() != null) casoExistente.setJp_responsable(String.valueOf(dto.getJp_responsable()));
+                
+                if (dto.getNombre_estado_modificacion() != null) {
+                    EstadoModificacion estado = estadosPorNombre.get(dto.getNombre_estado_modificacion());
+                    if (estado != null) {
+                        casoExistente.setId_estado_modificacion(estado.getId_estado_modificacion().intValue());
+                    } else {
+                        errores.add(new LoteErrorDetalleDTO("ACTUALIZACION", "ID Caso " + dto.getId_caso(), "El estado de modificación '" + dto.getNombre_estado_modificacion() + "' no es válido."));
+                    }
+                }
+                
+                if (dto.getNombres_fuentes() != null) {
+                    casoExistente.getFuentes().clear();
+                    Set<Fuente> nuevasFuentes = new HashSet<>();
+                    if (!dto.getNombres_fuentes().isBlank()) {
+                        String[] nombresFuente = dto.getNombres_fuentes().split(",");
+                        for (String nombre : nombresFuente) {
+                            String nombreTrim = nombre.trim();
+                            if (!nombreTrim.isEmpty()) {
+                                Fuente fuenteExistente = fuentesPorNombre.get(nombreTrim);
+                                if (fuenteExistente != null) {
+                                    nuevasFuentes.add(fuenteExistente);
+                                } else {
+                                    errores.add(new LoteErrorDetalleDTO("ACTUALIZACION", "ID Caso " + dto.getId_caso(), "La fuente '" + nombreTrim + "' no existe."));
+                                }
+                            }
+                        }
+                    }
+                    casoExistente.setFuentes(nuevasFuentes);
+                }
+                
+                casosAGuardar.add(casoExistente);
+                actualizadosCount++;
+            }
+        }
+
+        if (!errores.isEmpty()) {
+            throw new BatchValidationException("Se encontraron errores de validación en el lote. No se guardó ningún cambio.", errores);
+        }
+
+        if (!casosAGuardar.isEmpty()) {
+            casoRepository.saveAll(casosAGuardar);
+        }
+
+        return new LoteExitoResponseDTO(
+            "Lote procesado exitosamente.", 
+            creadosCount, 
+            actualizadosCount
         );
     }
     

@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import cl.rac.gesprub.dto.ImportResultDTO;
+import cl.rac.gesprub.dto.LoteErrorResponseDTO;
+import cl.rac.gesprub.exception.BatchValidationException;
 import cl.rac.gesprub.exception.ImportValidationException;
 
 @ControllerAdvice
@@ -26,6 +28,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ImportValidationException.class)
     public ResponseEntity<ImportResultDTO> handleImportValidationException(ImportValidationException ex) {
         ImportResultDTO errorResponse = new ImportResultDTO(ex.getMessage(), ex.getErrores());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+    
+    
+    @ExceptionHandler(BatchValidationException.class)
+    public ResponseEntity<LoteErrorResponseDTO> handleBatchValidationException(BatchValidationException ex) {
+        LoteErrorResponseDTO errorResponse = new LoteErrorResponseDTO(ex.getMessage(), ex.getErrores());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 }

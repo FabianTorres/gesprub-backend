@@ -27,7 +27,9 @@ import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
 import cl.rac.gesprub.dto.KanbanDTO;
+import cl.rac.gesprub.dto.LoteExitoResponseDTO;
 import cl.rac.gesprub.dto.MuroDTO;
+import cl.rac.gesprub.dto.ProcesarLoteRequestDTO;
 import cl.rac.gesprub.Entidad.Fuente;
 import java.util.Set;
 import cl.rac.gesprub.dto.FuenteDTO;
@@ -203,6 +205,11 @@ public class CasoController {
     @GetMapping("/kanban/proyecto")
     public KanbanDTO getKanban(@RequestParam Long proyectoId, @RequestParam Optional<Long> usuarioId) {
         return casoService.getKanbanData(proyectoId, usuarioId);
+    }
+    
+    @PostMapping("/procesar-lote")
+    public LoteExitoResponseDTO procesarLote(@Valid @RequestBody ProcesarLoteRequestDTO lote) {
+        return casoService.procesarLote(lote);
     }
 
 
