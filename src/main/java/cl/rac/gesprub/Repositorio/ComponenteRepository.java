@@ -19,5 +19,12 @@ public interface ComponenteRepository extends JpaRepository<Componente, Long>{
      */
     @Query("SELECT c.id_componente FROM Componente c WHERE c.proyecto.id_proyecto = :proyectoId")
     List<Integer> findComponenteIdsByProyectoId(@Param("proyectoId") Long proyectoId);
+    
+    /**
+     * Busca todos los componentes de un proyecto que pertenecen a un hito específico.
+     */
+    @Query("SELECT c FROM Componente c WHERE c.proyecto.id_proyecto = :proyectoId AND c.hito_componente = :hito")
+    List<Componente> findByProyectoIdAndHito(@Param("proyectoId") Long proyectoId, @Param("hito") Integer hito);
+
 
 }

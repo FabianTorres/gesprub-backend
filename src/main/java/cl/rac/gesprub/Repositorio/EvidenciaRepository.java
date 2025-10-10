@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import cl.rac.gesprub.Entidad.Evidencia;
 
@@ -35,5 +36,15 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	     */
 	    @Query("SELECT e FROM Evidencia e WHERE e.idCaso IN :idCasos")
 	    List<Evidencia> findByIdCasoIn(@Param("idCasos") List<Integer> idCasos);
+	    
+	    
+	    /**
+	     * Busca las 5 evidencias más recientes y trae sus Casos y Usuarios asociados
+	     * en una sola consulta para evitar problemas de rendimiento (N+1).
+	     */
+	    @EntityGraph(attributePaths = {"usuarioEjecutante"}) 
+	    List<Evidencia> findTop5ByIdCasoInOrderByFechaEvidenciaDesc(List<Integer> idCasos);
+	    
+	    
 
 }
