@@ -10,6 +10,6 @@ public class AvanceComponenteDTO {
     private String nombreComponente;
     private long totalCasos;
     private long casosOk;
-    private long casosNk;
+    private CasosNkDetalleDTO casosNk;
     private long casosSinEjecutar;
 }

@@ -5,8 +5,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class DistribucionEstadosDTO {
+public class CasosAsignadosDTO {
     private long ok;
-    private CasosNkDetalleDTO nk;
-    private long na;
+    private long nk;
+    private long sinEjecutar;
+    private long total;
 }

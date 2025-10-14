@@ -8,6 +8,7 @@ import lombok.Setter;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.sql.Timestamp;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -35,6 +36,8 @@ public class CasoDTO {
     private String nombre_componente;
     private Timestamp fechaMovimientoKanban;
     private UsuarioDTO usuarioEjecutante;
+    private Integer idCriticidad;
+    private Instant fechaUltimaEvidencia;
     
     // Un constructor que facilita la conversión desde la entidad
     public CasoDTO(Caso caso) {
@@ -66,8 +69,9 @@ public class CasoDTO {
     }
     
     public CasoDTO(Caso caso, String nombreComponente, Evidencia ultimaEvidencia) {
-        this(caso, nombreComponente); // Llama al constructor de arriba
+        this(caso, nombreComponente); // Llama al constructor anterior
         
+        // Lógica para fechaMovimientoKanban y usuarioEjecutante (ya existente)
         if ("Por Hacer".equals(caso.getEstadoKanban())) {
             this.fechaMovimientoKanban = caso.getFechaAsignacion();
             this.usuarioEjecutante = null;
@@ -77,6 +81,14 @@ public class CasoDTO {
                 if (ultimaEvidencia.getUsuarioEjecutante() != null) {
                     this.usuarioEjecutante = new UsuarioDTO(ultimaEvidencia.getUsuarioEjecutante());
                 }
+            }
+        }
+        
+        // Si existe una última evidencia, extraemos la fecha y la criticidad.
+        if (ultimaEvidencia != null) {
+            this.idCriticidad = ultimaEvidencia.getId_criticidad();
+            if (ultimaEvidencia.getFechaEvidencia() != null) {
+                this.fechaUltimaEvidencia = ultimaEvidencia.getFechaEvidencia().toInstant();
             }
         }
     }

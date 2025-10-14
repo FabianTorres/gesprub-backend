@@ -3,20 +3,29 @@ package cl.rac.gesprub.Servicio;
 import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Componente;
 import cl.rac.gesprub.Entidad.Evidencia;
+import cl.rac.gesprub.Entidad.Usuario;
+import cl.rac.gesprub.Entidad.Criticidad;
 import cl.rac.gesprub.Entidad.EstadoModificacion;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.ComponenteRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
+import cl.rac.gesprub.Repositorio.UsuarioRepository;
+import cl.rac.gesprub.Repositorio.CriticidadRepository;
 import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
 import cl.rac.gesprub.dto.dashboard.ActividadRecienteDTO;
 import cl.rac.gesprub.dto.dashboard.AvanceComponenteDTO;
+import cl.rac.gesprub.dto.dashboard.CargaPorUsuarioDTO;
+import cl.rac.gesprub.dto.dashboard.CasosAsignadosDTO;
+import cl.rac.gesprub.dto.dashboard.CasosNkDetalleDTO;
 import cl.rac.gesprub.dto.dashboard.ChartDTO;
 import cl.rac.gesprub.dto.dashboard.DashboardDTO;
 import cl.rac.gesprub.dto.dashboard.DashboardGeneralDTO;
 import cl.rac.gesprub.dto.dashboard.DatasetDTO;
 import cl.rac.gesprub.dto.dashboard.DistribucionEstadosDTO;
+import cl.rac.gesprub.dto.dashboard.EjecucionesPorPeriodoDTO;
 import cl.rac.gesprub.dto.dashboard.KpiDTO;
 import cl.rac.gesprub.dto.dashboard.KpiGeneralDTO;
+import cl.rac.gesprub.dto.dashboard.ProductividadDashboardDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,6 +49,12 @@ public class DashboardService {
     private EvidenciaRepository evidenciaRepository;
     @Autowired
     private EstadoModificacionRepository estadoModificacionRepository;
+    
+    @Autowired
+    private CriticidadRepository criticidadRepository;
+    
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     public DashboardDTO getDashboardData(Long proyectoId, Optional<Long> usuarioId) {
 
@@ -184,15 +199,12 @@ public class DashboardService {
      */
     public DashboardGeneralDTO getDashboardGeneralData(Long proyectoId, Optional<Long> componenteId) {
         DashboardGeneralDTO dashboard = new DashboardGeneralDTO();
-
+        System.out.println("\n--- INICIANDO DEPURACIÓN DEL DASHBOARD ---");
         // --- 1. DETERMINAR ALCANCE (PROYECTO O COMPONENTE) ---
         List<Integer> idsDeComponentesAFiltrar;
-
         if (componenteId.isPresent()) {
-            // Si se provee un componenteId, el alcance es solo ese componente.
             idsDeComponentesAFiltrar = Collections.singletonList(componenteId.get().intValue());
         } else {
-            // Si no, el alcance es todos los componentes del proyecto (comportamiento anterior).
             idsDeComponentesAFiltrar = componenteRepository.findComponenteIdsByProyectoId(proyectoId);
         }
 
@@ -200,18 +212,30 @@ public class DashboardService {
             return createEmptyGeneralDashboard();
         }
 
-        // --- El resto de la lógica es EXACTAMENTE LA MISMA, pero usando la lista de IDs determinada ---
-        
         List<Caso> casosActivos = casoRepository.findByActivoAndIdComponenteIn(1, idsDeComponentesAFiltrar);
+        if (casosActivos.isEmpty()) {
+            return createEmptyGeneralDashboard();
+        }
+        
+        
         List<Integer> idsCasosActivos = casosActivos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
         
-        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idsCasosActivos);
-        Map<Integer, List<Evidencia>> evidenciasPorCaso = todasLasEvidencias.stream().collect(Collectors.groupingBy(Evidencia::getIdCaso));
+        // --- CORRECCIÓN CLAVE 1: Obtenemos SOLO las evidencias activas ---
+        List<Evidencia> evidenciasActivas = evidenciaRepository.findByIdCasoIn(idsCasosActivos).stream()
+            .filter(e -> e.getActivo() == 1)
+            .collect(Collectors.toList());
+
+        Map<Integer, List<Evidencia>> evidenciasActivasPorCaso = evidenciasActivas.stream()
+            .collect(Collectors.groupingBy(Evidencia::getIdCaso));
+            
+        Map<Long, String> criticidadMap = criticidadRepository.findAll().stream()
+            .collect(Collectors.toMap(Criticidad::getId_criticidad, Criticidad::getNombre_criticidad));
+
 
         // --- 2. Calcular KPIs ---
         KpiGeneralDTO kpis = new KpiGeneralDTO();
         long totalCasos = casosActivos.size();
-        long casosEjecutados = evidenciasPorCaso.keySet().size();
+        long casosEjecutados = evidenciasActivasPorCaso.keySet().size();
         
         kpis.setTotalCasos(totalCasos);
         kpis.setCasosEjecutados(casosEjecutados);
@@ -226,16 +250,27 @@ public class DashboardService {
 
         // --- 3. Calcular Distribución de Estados ---
         DistribucionEstadosDTO distribucion = new DistribucionEstadosDTO();
-        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasPorCaso.values().stream()
-            .flatMap(List::stream)
-            .collect(Collectors.toMap(
-                Evidencia::getIdCaso,
-                Function.identity(),
-                (e1, e2) -> e1.getFechaEvidencia().after(e2.getFechaEvidencia()) ? e1 : e2
-            ));
-
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
+        evidenciasActivasPorCaso.forEach((idDelCaso, listaDeEvidencias) -> {
+            listaDeEvidencias.stream()
+                .max(Comparator.comparing(Evidencia::getFechaEvidencia))
+                .ifPresent(ultima -> ultimaEvidenciaPorCaso.put(idDelCaso, ultima));
+        });
+        
+        
+        List<Evidencia> ultimasEvidenciasNk = ultimaEvidenciaPorCaso.values().stream()
+            .filter(e -> "NK".equalsIgnoreCase(e.getEstado_evidencia())).collect(Collectors.toList());
+        
+        CasosNkDetalleDTO nkDetalle = new CasosNkDetalleDTO();
+        nkDetalle.setTotal(ultimasEvidenciasNk.size());
+        // Usamos el mapa de criticidades para contar por ID
+        nkDetalle.setLeve(ultimasEvidenciasNk.stream().filter(e -> e.getId_criticidad() != null && "Leve".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+        nkDetalle.setMedio(ultimasEvidenciasNk.stream().filter(e -> e.getId_criticidad() != null && "Medio".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+        nkDetalle.setGrave(ultimasEvidenciasNk.stream().filter(e -> e.getId_criticidad() != null && "Grave".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+        nkDetalle.setCritico(ultimasEvidenciasNk.stream().filter(e -> e.getId_criticidad() != null && "Crítico".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+        
         distribucion.setOk(ultimaEvidenciaPorCaso.values().stream().filter(e -> "OK".equalsIgnoreCase(e.getEstado_evidencia())).count());
-        distribucion.setNk(ultimaEvidenciaPorCaso.values().stream().filter(e -> "NK".equalsIgnoreCase(e.getEstado_evidencia())).count());
+        distribucion.setNk(nkDetalle);
         distribucion.setNa(ultimaEvidenciaPorCaso.values().stream().filter(e -> "N/A".equalsIgnoreCase(e.getEstado_evidencia())).count());
         dashboard.setDistribucionEstados(distribucion);
 
@@ -293,24 +328,27 @@ public class DashboardService {
         }
 
         // 2. Obtener TODOS los datos necesarios en pocas consultas para ser eficientes
-        List<Integer> idsComponentes = componentesDelProyecto.stream()
-            .map(c -> c.getId_componente().intValue())
-            .collect(Collectors.toList());
-        
-        List<Caso> todosLosCasos = casoRepository.findAllByIdComponenteIn(idsComponentes);
-        List<Integer> idsCasos = todosLosCasos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
-        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idsCasos);
-
+        Map<Long, String> criticidadMap = criticidadRepository.findAll().stream()
+                .collect(Collectors.toMap(Criticidad::getId_criticidad, Criticidad::getNombre_criticidad));
+                
+            List<Integer> idsComponentes = componentesDelProyecto.stream().map(c -> c.getId_componente().intValue()).collect(Collectors.toList());
+            List<Caso> todosLosCasos = casoRepository.findAllByIdComponenteIn(idsComponentes);
+            List<Integer> idsCasos = todosLosCasos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
+            List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idsCasos);
+            List<Evidencia> evidenciasActivas = todasLasEvidencias.stream().filter(e -> e.getActivo() == 1).collect(Collectors.toList());
+            
         // 3. Pre-procesar los datos en mapas para un acceso rápido
         Map<Integer, List<Caso>> casosPorComponente = todosLosCasos.stream()
             .collect(Collectors.groupingBy(Caso::getIdComponente));
         
-        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = todasLasEvidencias.stream()
-            .collect(Collectors.toMap(
-                Evidencia::getIdCaso,
-                Function.identity(),
-                (e1, e2) -> e1.getFechaEvidencia().after(e2.getFechaEvidencia()) ? e1 : e2
-            ));
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
+        evidenciasActivas.stream()
+            .collect(Collectors.groupingBy(Evidencia::getIdCaso))
+            .forEach((idDelCaso, listaDeEvidencias) -> {
+                listaDeEvidencias.stream()
+                    .max(Comparator.comparing(Evidencia::getFechaEvidencia))
+                    .ifPresent(ultima -> ultimaEvidenciaPorCaso.put(idDelCaso, ultima));
+            });
 
         // 4. Iterar sobre cada componente y calcular sus métricas
         List<AvanceComponenteDTO> resultado = new ArrayList<>();
@@ -323,8 +361,8 @@ public class DashboardService {
             dto.setTotalCasos(casosDelComponente.size());
 
             long casosOk = 0;
-            long casosNk = 0;
             long casosSinEjecutar = 0;
+            List<Evidencia> evidenciasNkDelComponente = new ArrayList<>();
 
             for (Caso caso : casosDelComponente) {
                 Evidencia ultimaEvidencia = ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue());
@@ -333,16 +371,128 @@ public class DashboardService {
                 } else if ("OK".equalsIgnoreCase(ultimaEvidencia.getEstado_evidencia())) {
                     casosOk++;
                 } else if ("NK".equalsIgnoreCase(ultimaEvidencia.getEstado_evidencia())) {
-                    casosNk++;
+                    evidenciasNkDelComponente.add(ultimaEvidencia);
                 }
             }
 
+            // Calculamos el desglose de criticidad para el componente actual
+            CasosNkDetalleDTO nkDetalle = new CasosNkDetalleDTO();
+            nkDetalle.setTotal(evidenciasNkDelComponente.size());
+            // Usamos el mapa de criticidades para contar por ID
+            nkDetalle.setLeve(evidenciasNkDelComponente.stream().filter(e -> e.getId_criticidad() != null && "Leve".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+            nkDetalle.setMedio(evidenciasNkDelComponente.stream().filter(e -> e.getId_criticidad() != null && "Medio".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+            nkDetalle.setGrave(evidenciasNkDelComponente.stream().filter(e -> e.getId_criticidad() != null && "Grave".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+            nkDetalle.setCritico(evidenciasNkDelComponente.stream().filter(e -> e.getId_criticidad() != null && "Crítico".equalsIgnoreCase(criticidadMap.get(e.getId_criticidad().longValue()))).count());
+            
             dto.setCasosOk(casosOk);
-            dto.setCasosNk(casosNk);
+            dto.setCasosNk(nkDetalle);
             dto.setCasosSinEjecutar(casosSinEjecutar);
             resultado.add(dto);
         }
 
         return resultado;
     }
+    
+    
+    /**
+     * NUEVO MÉTODO
+     * Calcula las métricas de carga de trabajo y productividad para un proyecto.
+     */
+    public ProductividadDashboardDTO getProductividadDashboard(Long proyectoId, String periodo) {
+        // --- 1. Obtener Datos Base ---
+        List<Integer> idsComponentes = componenteRepository.findComponenteIdsByProyectoId(proyectoId);
+        if (idsComponentes.isEmpty()) {
+            ProductividadDashboardDTO emptyDashboard = new ProductividadDashboardDTO();
+            emptyDashboard.setCargaPorUsuario(new ArrayList<>());
+            emptyDashboard.setEjecucionesPorPeriodo(new ArrayList<>());
+            return emptyDashboard;
+        }
+        
+        List<Caso> todosLosCasos = casoRepository.findAllByIdComponenteIn(idsComponentes);
+        List<Integer> idsCasos = todosLosCasos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
+        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idsCasos);
+        List<Usuario> todosLosUsuarios = usuarioRepository.findAll();
+        Map<Long, String> mapaNombresUsuarios = todosLosUsuarios.stream().collect(Collectors.toMap(Usuario::getIdUsuario, Usuario::getNombreUsuario));
+        
+        // --- 2. Calcular Carga por Usuario ---
+        Map<Integer, List<Caso>> casosAsignadosPorUsuario = todosLosCasos.stream()
+            .filter(c -> c.getIdUsuarioAsignado() != null)
+            .collect(Collectors.groupingBy(Caso::getIdUsuarioAsignado));
+
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = todasLasEvidencias.stream()
+            .collect(Collectors.toMap(Evidencia::getIdCaso, Function.identity(), (e1, e2) -> e1.getFechaEvidencia().after(e2.getFechaEvidencia()) ? e1 : e2));
+
+        List<CargaPorUsuarioDTO> cargaPorUsuarioList = new ArrayList<>();
+        for (Map.Entry<Integer, List<Caso>> entry : casosAsignadosPorUsuario.entrySet()) {
+            Long idUsuario = entry.getKey().longValue();
+            List<Caso> casosAsignados = entry.getValue();
+
+            CargaPorUsuarioDTO cargaDto = new CargaPorUsuarioDTO();
+            cargaDto.setIdUsuario(idUsuario);
+            cargaDto.setNombreUsuario(mapaNombresUsuarios.get(idUsuario));
+
+            CasosAsignadosDTO desglose = new CasosAsignadosDTO();
+            desglose.setTotal(casosAsignados.size());
+            long ok = 0, nk = 0, sinEjecutar = 0;
+
+            for (Caso caso : casosAsignados) {
+                Evidencia ultima = ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue());
+                if (ultima == null) sinEjecutar++;
+                else if ("OK".equalsIgnoreCase(ultima.getEstado_evidencia())) ok++;
+                else if ("NK".equalsIgnoreCase(ultima.getEstado_evidencia())) nk++;
+            }
+            desglose.setOk(ok);
+            desglose.setNk(nk);
+            desglose.setSinEjecutar(sinEjecutar);
+            cargaDto.setCasosAsignados(desglose);
+
+            // Calcular última actividad
+            todasLasEvidencias.stream()
+                .filter(e -> e.getUsuarioEjecutante() != null && idUsuario.equals(e.getUsuarioEjecutante().getIdUsuario()))
+                .max(Comparator.comparing(Evidencia::getFechaEvidencia))
+                .ifPresent(e -> cargaDto.setUltimaActividad(e.getFechaEvidencia().toInstant()));
+            
+            cargaPorUsuarioList.add(cargaDto);
+        }
+
+        // --- 3. Calcular Ejecuciones por Periodo ---
+        LocalDate ahora = LocalDate.now();
+        LocalDate fechaInicio;
+        switch (periodo) {
+            case "30d":
+                fechaInicio = ahora.minusDays(30);
+                break;
+            case "mesActual":
+                fechaInicio = ahora.withDayOfMonth(1);
+                break;
+            case "7d":
+            default:
+                fechaInicio = ahora.minusDays(7);
+                break;
+        }
+
+        List<EjecucionesPorPeriodoDTO> ejecucionesList = todasLasEvidencias.stream()
+            .filter(e -> e.getFechaEvidencia() != null && !e.getFechaEvidencia().toLocalDateTime().toLocalDate().isBefore(fechaInicio))
+            .filter(e -> e.getUsuarioEjecutante() != null)
+            .collect(Collectors.groupingBy(e -> e.getUsuarioEjecutante().getIdUsuario(), Collectors.counting()))
+            .entrySet().stream()
+            .map(entry -> {
+                EjecucionesPorPeriodoDTO dto = new EjecucionesPorPeriodoDTO();
+                dto.setIdUsuario(entry.getKey());
+                dto.setNombreUsuario(mapaNombresUsuarios.get(entry.getKey()));
+                dto.setTotalEjecuciones(entry.getValue());
+                return dto;
+            })
+            .collect(Collectors.toList());
+            
+        // --- 4. Ensamblar y devolver la respuesta ---
+        ProductividadDashboardDTO dashboardFinal = new ProductividadDashboardDTO();
+        dashboardFinal.setCargaPorUsuario(cargaPorUsuarioList);
+        dashboardFinal.setEjecucionesPorPeriodo(ejecucionesList);
+        
+        return dashboardFinal;
+    }
+    
+    
+    
 }

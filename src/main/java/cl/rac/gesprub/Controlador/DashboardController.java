@@ -3,6 +3,7 @@ package cl.rac.gesprub.Controlador;
 import cl.rac.gesprub.Servicio.DashboardService;
 import cl.rac.gesprub.dto.dashboard.DashboardDTO;
 import cl.rac.gesprub.dto.dashboard.DashboardGeneralDTO;
+import cl.rac.gesprub.dto.dashboard.ProductividadDashboardDTO;
 import cl.rac.gesprub.dto.dashboard.AvanceComponenteDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,5 +46,16 @@ public class DashboardController {
             @RequestParam Optional<Integer> hito) {
         
         return dashboardService.getAvancePorComponente(proyectoId, hito);
+    }
+    
+    /**
+     * Devuelve el dashboard de productividad y carga de trabajo para un proyecto.
+     */
+    @GetMapping("/productividad")
+    public ProductividadDashboardDTO getProductividadDashboard(
+            @RequestParam Long proyectoId,
+            @RequestParam(defaultValue = "7d") String periodo) { // '7d' es el valor por defecto
+        
+        return dashboardService.getProductividadDashboard(proyectoId, periodo);
     }
 }
