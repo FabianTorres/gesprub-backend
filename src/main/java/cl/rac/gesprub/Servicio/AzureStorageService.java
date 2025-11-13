@@ -7,6 +7,8 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 
+import cl.rac.gesprub.dto.FileDownloadDTO;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -67,5 +69,26 @@ public class AzureStorageService {
 
         // Devolvemos la URL completa con el token SAS adjunto
         return String.format("%s?%s", blobClient.getBlobUrl(), sasToken);
+    }
+    
+    /**
+     * NUEVO MÉTODO
+     * Descarga un archivo desde Azure Storage como un flujo de datos.
+     */
+    public FileDownloadDTO downloadFile(String containerName, String blobName, String nombreOriginal) {
+        BlobServiceClient blobServiceClient = getBlobServiceClient();
+        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+        BlobClient blobClient = containerClient.getBlobClient(blobName);
+
+        if (!blobClient.exists()) {
+            throw new RuntimeException("No se encontró el archivo en Azure Storage: " + blobName);
+        }
+
+        // Obtenemos el flujo de datos y el tamaño del archivo
+        InputStream dataStream = blobClient.openInputStream();
+        long contentLength = blobClient.getProperties().getBlobSize();
+
+        // Devolvemos un DTO con toda la información necesaria para el streaming
+        return new FileDownloadDTO(nombreOriginal, contentLength, dataStream);
     }
 }

@@ -5,6 +5,8 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Repositorio.ArchivoEvidenciaRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.dto.ArchivoEvidenciaDTO;
+import cl.rac.gesprub.dto.FileDownloadDTO;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional; 
 import org.springframework.web.multipart.MultipartFile; 
@@ -82,5 +84,22 @@ public class ArchivoEvidenciaService {
         return archivos.stream()
                 .map(ArchivoEvidenciaDTO::new)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * NUEVO MÉTODO
+     * Prepara el flujo de un archivo para ser retransmitido (streaming) al cliente.
+     */
+    public FileDownloadDTO streamFile(Long idArchivo) {
+        // 1. Buscamos el registro del archivo en nuestra BD.
+        ArchivoEvidencia archivo = archivoEvidenciaRepository.findById(idArchivo)
+                .orElseThrow(() -> new RuntimeException("Archivo no encontrado con id: " + idArchivo));
+        
+        // 2. Obtenemos el nombre del blob y el nombre original
+        String blobName = archivo.getUrl_archivo();
+        String nombreOriginal = archivo.getNombre_archivo();
+
+        // 3. Llamamos al servicio de Azure para obtener el flujo de descarga
+        return azureStorageService.downloadFile(CONTAINER_NAME, blobName, nombreOriginal);
     }
 }
