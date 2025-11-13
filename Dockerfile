@@ -17,8 +17,8 @@ RUN mvn package -DskipTests
 RUN ls -l /workspace/app/target/
 
 # --- Etapa 2: Imagen Final ---
-# Usamos una imagen base de Java 21 muy ligera para la ejecución.
-FROM openjdk:21-jdk-slim
+# Reemplaza la imagen obsoleta openjdk:21-jdk-slim por Temurin
+FROM eclipse-temurin:21-jre
 
 # Establecemos el directorio de trabajo
 WORKDIR /app
