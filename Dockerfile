@@ -18,7 +18,7 @@ RUN ls -l /workspace/app/target/
 
 # --- Etapa 2: Imagen Final ---
 # Usamos una imagen base de Java 21 muy ligera para la ejecución.
-FROM openjdk:21-jdk-bookworm
+FROM openjdk:21-jdk-slim
 
 # Establecemos el directorio de trabajo
 WORKDIR /app
