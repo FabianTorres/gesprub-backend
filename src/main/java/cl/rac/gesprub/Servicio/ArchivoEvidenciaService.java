@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 import org.springframework.stereotype.Service;
 
@@ -129,55 +130,51 @@ public class ArchivoEvidenciaService {
         return azureStorageService.downloadFile(CONTAINER_NAME, archivo.getRuta_archivo(), archivo.getNombre_archivo());
     }
     
+  
+    
     /**
-     * Descarga masiva ZIP por Componente
+     * Obtiene solo el nombre sugerido para el ZIP.
      */
-    @Transactional(readOnly = true) // Importante para rendimiento y lazy loading
-    public FileDownloadDTO descargarZipComponente(Long idComponente) {
-        // 1. Obtener nombre del componente para el archivo ZIP
+    public String obtenerNombreZipComponente(Long idComponente) {
         Componente componente = componenteRepository.findById(idComponente)
                 .orElseThrow(() -> new RuntimeException("Componente no encontrado"));
-        String nombreZip = "Evidencias_" + componente.getNombre_componente().replaceAll("\\s+", "_") + ".zip";
-
-        // 2. Buscar todos los casos del componente
+        return "Evidencias_" + componente.getNombre_componente().replaceAll("\\s+", "_") + ".zip";
+    }
+    
+    /**
+     * Genera el ZIP escribiendo directamente en el flujo de salida (OutputStream),
+     * sin almacenar el archivo completo en memoria.
+     */
+    @Transactional(readOnly = true)
+    public void generarZipStream(Long idComponente, OutputStream outputStream) {
+        // 1. Buscar datos (igual que antes)
         List<Caso> casos = casoRepository.findByIdComponente(idComponente.intValue());
-        if (casos.isEmpty()) {
-            throw new RuntimeException("El componente no tiene casos.");
-        }
+        if (casos.isEmpty()) return;
+        
         List<Integer> idsCasos = casos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
-
-        // 3. Buscar evidencias y sus archivos
         List<Evidencia> evidencias = evidenciaRepository.findByIdCasoIn(idsCasos);
-        
-        // Mapa para controlar nombres duplicados en el ZIP: ruta -> contador
+        Map<Long, String> nombresCasos = casos.stream().collect(Collectors.toMap(Caso::getId_caso, Caso::getNombre_caso));
         Map<String, Integer> nombresUsados = new HashMap<>();
-        
-        // Usamos un stream en memoria para el ZIP
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            
-            // Creamos un mapa rápido de casos para obtener nombres
-            Map<Long, String> nombresCasos = casos.stream()
-                    .collect(Collectors.toMap(Caso::getId_caso, Caso::getNombre_caso));
 
+        // 2. Crear el ZipOutputStream envolviendo el outputStream que nos pasan (el del navegador)
+        try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+            
             for (Evidencia evi : evidencias) {
                 List<ArchivoEvidencia> archivos = archivoEvidenciaRepository.findByEvidenciaId(evi.getId_evidencia());
                 
                 for (ArchivoEvidencia archivo : archivos) {
                     try {
-                        // Descargar contenido desde Azure
+                        // Descargamos el stream de Azure (esto no carga el archivo en memoria, solo abre el grifo)
                         FileDownloadDTO descarga = azureStorageService.downloadFile(CONTAINER_NAME, archivo.getRuta_archivo(), archivo.getNombre_archivo());
                         
-                        // Construir ruta legible en el ZIP: {NombreCaso}/{NombreArchivo}
+                        // --- Lógica de nombres (igual que antes) ---
                         String nombreCaso = nombresCasos.get((long)evi.getIdCaso()).replaceAll("[^a-zA-Z0-9.\\-]", "_");
                         String nombreArchivo = archivo.getNombre_archivo();
-                        
-                        // Manejo de duplicados
                         String rutaZip = nombreCaso + "/" + nombreArchivo;
+                        
                         if (nombresUsados.containsKey(rutaZip)) {
                             int count = nombresUsados.get(rutaZip) + 1;
                             nombresUsados.put(rutaZip, count);
-                            // Insertar contador antes de la extensión: foto.png -> foto(1).png
                             int dotIndex = nombreArchivo.lastIndexOf(".");
                             if (dotIndex > 0) {
                                 nombreArchivo = nombreArchivo.substring(0, dotIndex) + "(" + count + ")" + nombreArchivo.substring(dotIndex);
@@ -188,29 +185,26 @@ public class ArchivoEvidenciaService {
                         } else {
                             nombresUsados.put(rutaZip, 0);
                         }
+                        // -------------------------------------------
 
-                        // Añadir al ZIP
+                        // Creamos la entrada en el ZIP
                         ZipEntry entry = new ZipEntry(rutaZip);
                         zos.putNextEntry(entry);
                         
-                        // Copiar stream
+                        // COPIADO EFICIENTE: Leemos de Azure y escribimos al ZIP en vuelo
                         try (InputStream is = descarga.getDataStream()) {
                             is.transferTo(zos);
                         }
                         zos.closeEntry();
                         
                     } catch (Exception e) {
-                        // Si falla un archivo, lo logueamos pero intentamos seguir con los demás
                         System.err.println("Error al agregar archivo al ZIP: " + archivo.getRuta_archivo() + " - " + e.getMessage());
                     }
                 }
             }
+            zos.finish(); // Finalizamos el ZIP correctamente
         } catch (IOException e) {
-            throw new RuntimeException("Error al generar el archivo ZIP", e);
+            throw new RuntimeException("Error al generar el flujo ZIP", e);
         }
-
-        // Retornar el ZIP como un stream
-        InputStream zipStream = new ByteArrayInputStream(baos.toByteArray());
-        return new FileDownloadDTO(nombreZip, (long) baos.size(), zipStream);
     }
 }

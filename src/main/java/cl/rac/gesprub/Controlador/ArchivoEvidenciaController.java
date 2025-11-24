@@ -6,7 +6,9 @@ import cl.rac.gesprub.Servicio.ArchivoEvidenciaService;
 import cl.rac.gesprub.dto.ArchivoEvidenciaDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile; 
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
 import java.io.IOException;
 import java.util.List;
 import org.springframework.core.io.InputStreamResource;
@@ -72,21 +74,27 @@ public class ArchivoEvidenciaController {
     }
     
     /**
-     * Descarga Masiva (ZIP)
+     * Descarga Masiva con Streaming
+     * Previene OutOfMemoryError al no cargar el ZIP en RAM.
      */
     @GetMapping("/componente/{idComponente}/descargar-zip")
-    public ResponseEntity<InputStreamResource> descargarZipComponente(@PathVariable Long idComponente) {
-        FileDownloadDTO fileData = archivoEvidenciaService.descargarZipComponente(idComponente);
+    public ResponseEntity<StreamingResponseBody> descargarZipComponente(@PathVariable Long idComponente) {
+        
+        // 1. Obtenemos solo el nombre para la cabecera
+        String nombreArchivo = archivoEvidenciaService.obtenerNombreZipComponente(idComponente);
 
+        // 2. Preparamos las cabeceras
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileData.getNombreOriginal() + "\"");
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nombreArchivo + "\"");
         headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
-        headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileData.getContentLength()));
+        // Nota: Ya no enviamos Content-Length porque no sabemos el tamaño final hasta terminar de comprimir
 
-        return new ResponseEntity<>(
-            new InputStreamResource(fileData.getDataStream()),
-            headers,
-            HttpStatus.OK
-        );
+        // 3. Definimos el cuerpo de la respuesta como una función lambda
+        StreamingResponseBody responseBody = outputStream -> {
+            archivoEvidenciaService.generarZipStream(idComponente, outputStream);
+        };
+
+        // 4. Spring ejecutará esa lambda en un hilo separado, escribiendo directo a la respuesta
+        return new ResponseEntity<>(responseBody, headers, HttpStatus.OK);
     }
 }
