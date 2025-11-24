@@ -12,7 +12,9 @@ public class ArchivoEvidencia {
     private Long id_archivo;
 
     private String nombre_archivo;
-    private String url_archivo;
+    
+    @Column(name = "ruta_archivo") // Mapeamos a la nueva columna
+    private String ruta_archivo;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_evidencia")
@@ -37,12 +39,12 @@ public class ArchivoEvidencia {
 		this.nombre_archivo = nombre_archivo;
 	}
 
-	public String getUrl_archivo() {
-		return url_archivo;
+	public String getRuta_archivo() {
+		return ruta_archivo;
 	}
 
-	public void setUrl_archivo(String url_archivo) {
-		this.url_archivo = url_archivo;
+	public void setRuta_archivo(String ruta_archivo) {
+		this.ruta_archivo = ruta_archivo;
 	}
 
 	public Evidencia getEvidencia() {

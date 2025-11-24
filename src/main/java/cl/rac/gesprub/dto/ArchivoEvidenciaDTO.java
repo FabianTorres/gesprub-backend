@@ -16,6 +16,6 @@ public class ArchivoEvidenciaDTO {
     public ArchivoEvidenciaDTO(ArchivoEvidencia entidad) {
         this.id_archivo = entidad.getId_archivo();
         this.nombre_archivo = entidad.getNombre_archivo();
-        this.url_archivo = entidad.getUrl_archivo();
+        this.url_archivo = entidad.getRuta_archivo();
     }
 }

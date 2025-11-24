@@ -36,7 +36,6 @@ public class ArchivoEvidenciaController {
     }
     
     /**
-     * ENDPOINT ACTUALIZADO (generador de URL SAS)
      * Este endpoint se mantiene, pero ahora el frontend solo lo usará para redes
      * que no tengan problemas de firewall
      */
@@ -47,7 +46,6 @@ public class ArchivoEvidenciaController {
     }
     
     /**
-     * NUEVO ENDPOINT DE STREAMING (SOLUCIÓN PARA RED B)
      * Descarga el archivo actuando como un proxy. El archivo se sirve
      * desde el dominio gesprub.cl, evitando bloqueos de firewall.
      */
@@ -69,6 +67,25 @@ public class ArchivoEvidenciaController {
         return new ResponseEntity<>(
             new InputStreamResource(fileData.getDataStream()), // El cuerpo de la respuesta es el flujo del archivo
             headers, // Las cabeceras que definimos
+            HttpStatus.OK
+        );
+    }
+    
+    /**
+     * Descarga Masiva (ZIP)
+     */
+    @GetMapping("/componente/{idComponente}/descargar-zip")
+    public ResponseEntity<InputStreamResource> descargarZipComponente(@PathVariable Long idComponente) {
+        FileDownloadDTO fileData = archivoEvidenciaService.descargarZipComponente(idComponente);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileData.getNombreOriginal() + "\"");
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
+        headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileData.getContentLength()));
+
+        return new ResponseEntity<>(
+            new InputStreamResource(fileData.getDataStream()),
+            headers,
             HttpStatus.OK
         );
     }
