@@ -85,6 +85,15 @@ public class ReporteService {
                 dto.setRut_evidencia(evidencia.getRut());
                 dto.setResultado_evidencia(evidencia.getEstado_evidencia());
                 
+                
+                if (evidencia.getId_jira() > 0) {
+                    // Si el valor es > 0, lo consideramos un ID válido
+                    dto.setId_jira(evidencia.getId_jira());
+                } else {
+                    // Si es 0 o menos, se queda como null (valor predeterminado del Integer en el DTO)
+                    dto.setId_jira(null);
+                }
+                
                 if (evidencia.getUsuarioEjecutante() != null) {
                     dto.setNombre_analista(evidencia.getUsuarioEjecutante().getNombreUsuario());
                 }
@@ -99,6 +108,7 @@ public class ReporteService {
             } else {
                 // Si no hay evidencia, enviamos valores vacíos o nulos según requerimiento
                 dto.setResultado_evidencia("N/A"); // O null, según prefieras
+                dto.setId_jira(null);
             }
 
             return dto;

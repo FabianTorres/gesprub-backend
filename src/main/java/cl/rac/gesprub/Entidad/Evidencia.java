@@ -41,7 +41,11 @@ public class Evidencia {
 	
 	private String url_evidencia;
 	
+	@Column(name = "id_jira")
 	private int id_jira;
+	
+	@Column(name = "clave_jira")
+    private String claveJiraTexto;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario_ejecutante")
@@ -126,7 +130,15 @@ public class Evidencia {
 	public void setId_jira(int id_jira) {
 		this.id_jira = id_jira;
 	}
+    
+    // Getter y Setter para el nuevo campo textual
+    public String getClaveJiraTexto() {
+        return claveJiraTexto;
+    }
 
+    public void setClaveJiraTexto(String claveJiraTexto) {
+        this.claveJiraTexto = claveJiraTexto;
+    }
 
 	public int getIdCaso() {
 		return idCaso;

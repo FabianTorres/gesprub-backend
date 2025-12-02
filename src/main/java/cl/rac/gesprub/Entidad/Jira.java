@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 
 @Entity
 @Table(name = "jira")
@@ -16,7 +17,8 @@ public class Jira {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id_jira;
 	
-	private String clave_jira;
+	@Column(name = "clave_jira")
+	private String claveJira;
 	
 	private String descripcion;
 	
@@ -29,6 +31,10 @@ public class Jira {
 	private String estado;
 	
 	private String criticidad;
+	
+	private String creador;
+    
+    private String tipo;
 
 	public Long getId_jira() {
 		return id_jira;
@@ -38,14 +44,14 @@ public class Jira {
 		this.id_jira = id_jira;
 	}
 
-	public String getClave_jira() {
-		return clave_jira;
+	public String getClaveJira() {
+		return claveJira;
 	}
 
-	public void setClave_jira(String clave_jira) {
-		this.clave_jira = clave_jira;
+	public void setClaveJira(String claveJira) {
+		this.claveJira = claveJira;
 	}
-
+	
 	public String getDescripcion() {
 		return descripcion;
 	}
@@ -93,6 +99,22 @@ public class Jira {
 	public void setCriticidad(String criticidad) {
 		this.criticidad = criticidad;
 	}
+	
+	public String getCreador() {
+        return creador;
+    }
+
+    public void setCreador(String creador) {
+        this.creador = creador;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
 	
 	
 

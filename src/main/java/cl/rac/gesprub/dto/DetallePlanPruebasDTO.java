@@ -18,6 +18,7 @@ public class DetallePlanPruebasDTO {
     private String rut_evidencia;
     private String nombre_analista;
     private String resultado_evidencia;
+    private Integer id_jira;
     
     // Archivos concatenados
     private String nombres_archivos;

@@ -238,6 +238,7 @@ public class CasoService {
                     item.setId_criticidad(evidencia.getId_criticidad());
                     item.setUrl_evidencia(evidencia.getUrl_evidencia());
                     item.setId_jira(evidencia.getId_jira());
+                    item.setClaveJira(evidencia.getClaveJiraTexto());
                     item.setRut(evidencia.getRut());
                     item.setActivo(evidencia.getActivo());
                     

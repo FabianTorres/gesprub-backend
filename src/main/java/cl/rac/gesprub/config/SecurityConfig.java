@@ -60,6 +60,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/usuario").permitAll()      // Puedes añadir aquí otras rutas públicas si las tienes (ej. /api/public/**)
                 .requestMatchers(HttpMethod.POST, "/api/proyecto").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/componente").permitAll()
+                .requestMatchers("/api/integracion/**").permitAll() 
                 .requestMatchers(HttpMethod.PUT, "/api/caso/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/caso/**").authenticated() 
                 .requestMatchers(HttpMethod.PATCH, "/api/evidencia/**").authenticated()

@@ -18,6 +18,7 @@ public class EvidenciaDTO {
     private Timestamp fechaEvidencia;
     private String url_evidencia;
     private int id_jira;
+    private String claveJira;
     private int idCaso;
     private String criticidad;
     private Integer id_criticidad;
@@ -33,6 +34,7 @@ public class EvidenciaDTO {
         this.fechaEvidencia = evidencia.getFechaEvidencia();
         this.url_evidencia = evidencia.getUrl_evidencia();
         this.id_jira = evidencia.getId_jira();
+        this.claveJira = evidencia.getClaveJiraTexto();
         this.idCaso = evidencia.getIdCaso();
         this.criticidad = evidencia.getCriticidad();
         this.id_criticidad = evidencia.getId_criticidad();
