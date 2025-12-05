@@ -25,7 +25,10 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	        """, nativeQuery = true)
 	    List<Evidencia> findUltimaEvidenciaPorCaso();
 		
-		List<Evidencia> findByIdCasoOrderByFechaEvidenciaDesc(int idCaso);
+//		List<Evidencia> findByIdCasoOrderByFechaEvidenciaDesc(int idCaso);
+		
+		@EntityGraph(attributePaths = {"usuarioEjecutante", "ciclo"}) 
+	    List<Evidencia> findByIdCasoOrderByFechaEvidenciaDesc(int idCaso);
 		
 		@Query("SELECT DISTINCT e.rut FROM Evidencia e WHERE e.idCaso = :idCaso AND e.rut IS NOT NULL AND e.rut <> ''")
 		List<String> findDistinctRutByIdCaso(@Param("idCaso") int idCaso);
@@ -44,6 +47,26 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	     */
 	    @EntityGraph(attributePaths = {"usuarioEjecutante"}) 
 	    List<Evidencia> findTop5ByIdCasoInOrderByFechaEvidenciaDesc(List<Integer> idCasos);
+	    
+	    
+	    /**
+	     * Obtiene el conteo agrupado por estado de la ÚLTIMA evidencia de cada caso
+	     * dentro de un ciclo específico.
+	     * Retorna una lista de arrays: [String estado, Long cantidad]
+	     */
+	    @Query(value = """
+	        SELECT e.estado_evidencia, COUNT(*)
+	        FROM evidencia e
+	        INNER JOIN (
+	            SELECT id_caso, MAX(fecha_evidencia) as max_fecha
+	            FROM evidencia
+	            WHERE id_ciclo = :idCiclo
+	            GROUP BY id_caso
+	        ) ultimas ON e.id_caso = ultimas.id_caso AND e.fecha_evidencia = ultimas.max_fecha
+	        WHERE e.id_ciclo = :idCiclo
+	        GROUP BY e.estado_evidencia
+	    """, nativeQuery = true)
+	    List<Object[]> countEstadosUltimaEvidenciaPorCiclo(@Param("idCiclo") Integer idCiclo);
 	    
 	    
 

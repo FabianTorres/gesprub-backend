@@ -37,6 +37,7 @@ import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoCrearLoteDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
+import cl.rac.gesprub.dto.CicloResumenDTO;
 import cl.rac.gesprub.dto.EvidenciaItemDTO;
 import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
@@ -232,6 +233,7 @@ public class CasoService {
                     item.setEstado_evidencia(evidencia.getEstado_evidencia());
                     item.setId_estado_evidencia(evidencia.getId_estado_evidencia());
                     item.setVersion_ejecucion(evidencia.getVersion_ejecucion());
+
                     
                     item.setFecha_evidencia(evidencia.getFechaEvidencia());
                     item.setCriticidad(evidencia.getCriticidad());
@@ -246,6 +248,15 @@ public class CasoService {
                     // Obtenemos el nombre del usuario relacionado.
                     if (evidencia.getUsuarioEjecutante() != null) {
                         item.setNombreUsuarioEjecutante(evidencia.getUsuarioEjecutante().getNombreUsuario());
+                    }
+                    
+                    if (evidencia.getCiclo() != null) {
+                        item.setId_ciclo(evidencia.getCiclo().getIdCiclo());
+                        // Usamos el constructor del DTO resumen que recibe la Entidad Ciclo
+                        item.setCiclo(new CicloResumenDTO(evidencia.getCiclo()));
+                    } else {
+                        item.setId_ciclo(null);
+                        item.setCiclo(null);
                     }
 
                     return item;

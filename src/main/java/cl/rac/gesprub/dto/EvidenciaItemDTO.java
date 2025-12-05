@@ -21,4 +21,6 @@ public class EvidenciaItemDTO {
 	private String rut;
     private String nombreUsuarioEjecutante; 
     private int activo;
+    private Integer id_ciclo;
+    private CicloResumenDTO ciclo;
 }

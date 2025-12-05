@@ -70,6 +70,14 @@ public class Evidencia {
 	@Column(name = "activo", columnDefinition = "int default 1")
     private int activo = 1;
 	
+	@JsonProperty("id_ciclo")
+	@Column(name = "id_ciclo")
+    private Integer idCiclo;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ciclo", insertable = false, updatable = false)
+    private Ciclo ciclo;
+	
 	
 
 	public Long getId_evidencia() {
@@ -202,6 +210,22 @@ public class Evidencia {
 
     public void setActivo(int activo) {
         this.activo = activo;
+    }
+    
+    public Integer getIdCiclo() {
+        return idCiclo;
+    }
+
+    public void setIdCiclo(Integer idCiclo) {
+        this.idCiclo = idCiclo;
+    }
+
+    public Ciclo getCiclo() {
+        return ciclo;
+    }
+
+    public void setCiclo(Ciclo ciclo) {
+        this.ciclo = ciclo;
     }
 
 	
