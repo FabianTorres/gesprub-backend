@@ -68,6 +68,7 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	    """, nativeQuery = true)
 	    List<Object[]> countEstadosUltimaEvidenciaPorCiclo(@Param("idCiclo") Integer idCiclo);
 	    
-	    
+	    // Mtodo para traer todas las evidencias asociadas a un ciclo
+	    List<Evidencia> findByIdCiclo(Integer idCiclo);
 
 }

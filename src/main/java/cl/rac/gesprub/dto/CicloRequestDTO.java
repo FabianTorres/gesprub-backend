@@ -22,4 +22,7 @@ public class CicloRequestDTO {
 
     @NotNull(message = "El ID del usuario creador es obligatorio.")
     private Integer idUsuarioCreador;
+    
+    @NotNull(message = "El ID del proyecto es obligatorio.")
+    private Long idProyecto; // Nuevo campo obligatorio
 }

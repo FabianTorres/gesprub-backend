@@ -7,6 +7,7 @@ import cl.rac.gesprub.dto.CerrarCicloRequestDTO;
 import cl.rac.gesprub.dto.CicloDTO;
 import cl.rac.gesprub.dto.CicloRequestDTO;
 import cl.rac.gesprub.dto.CicloResumenDTO;
+import cl.rac.gesprub.dto.ReporteCicloDetalleDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +28,10 @@ public class CicloController {
      */
     @GetMapping
     public ResponseEntity<List<CicloDTO>> getCiclos(
+    		@RequestParam Long idProyecto,
             @RequestParam(value = "estado", defaultValue = "activos") String estado) {
         
-        List<CicloDTO> ciclos = cicloService.getCiclos(estado);
+        List<CicloDTO> ciclos = cicloService.getCiclos(idProyecto, estado);
         return ResponseEntity.ok(ciclos);
     }
     
@@ -101,5 +103,15 @@ public class CicloController {
     public ResponseEntity<CicloDTO> getCicloById(@PathVariable Integer idCiclo) {
         CicloDTO ciclo = cicloService.getCicloById(idCiclo);
         return ResponseEntity.ok(ciclo);
+    }
+    
+    /**
+     * Genera un reporte detallado del estado de ejecución de todos los casos
+     * asignados a un ciclo específico.
+     */
+    @GetMapping("/{idCiclo}/reporte")
+    public ResponseEntity<List<ReporteCicloDetalleDTO>> getReporteCiclo(@PathVariable Integer idCiclo) {
+        List<ReporteCicloDetalleDTO> reporte = cicloService.getReporteDetallado(idCiclo);
+        return ResponseEntity.ok(reporte);
     }
 }

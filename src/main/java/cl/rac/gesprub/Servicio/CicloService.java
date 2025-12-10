@@ -1,11 +1,15 @@
 package cl.rac.gesprub.Servicio;
 
+import cl.rac.gesprub.Entidad.Caso;
 import cl.rac.gesprub.Entidad.Ciclo;
 import cl.rac.gesprub.Entidad.CicloCaso;
 import cl.rac.gesprub.Repositorio.CicloCasoRepository;
 import cl.rac.gesprub.Repositorio.CicloRepository;
+import cl.rac.gesprub.Repositorio.ComponenteRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.dto.AsignacionCasosRequestDTO;
+import cl.rac.gesprub.Entidad.EstadoModificacion; 
+import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
 import cl.rac.gesprub.dto.CerrarCicloRequestDTO;
 import cl.rac.gesprub.dto.CicloDTO;
 import cl.rac.gesprub.dto.CicloRequestDTO;
@@ -13,6 +17,12 @@ import cl.rac.gesprub.dto.CicloResumenDTO;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import cl.rac.gesprub.dto.ReporteCicloDetalleDTO;
+import cl.rac.gesprub.Entidad.Evidencia;
+import cl.rac.gesprub.Entidad.Componente;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.Collections;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,10 +35,14 @@ public class CicloService {
     private final CicloRepository cicloRepository;
     private final CicloCasoRepository cicloCasoRepository;
     private final EvidenciaRepository evidenciaRepository;
+    private final ComponenteRepository componenteRepository;
+    private final EstadoModificacionRepository estadoModificacionRepository;
 
     @Transactional
     public Ciclo createCiclo(CicloRequestDTO dto) {
         Ciclo ciclo = new Ciclo();
+        
+        ciclo.setIdProyecto(dto.getIdProyecto());
         
         ciclo.setJiraKey(dto.getJiraKey());
         ciclo.setNombre(dto.getNombre());
@@ -44,27 +58,33 @@ public class CicloService {
     }
     
     /**
-     * Obtiene los ciclos y CALCULA LOS KPIs para cada uno.
+     * Obtiene los ciclos por proyecto y estado y calcula los KPI
      */
-    public List<CicloDTO> getCiclos(String estado) {
+    public List<CicloDTO> getCiclos(Long idProyecto, String estado) {
         List<Ciclo> ciclos;
         
-        // 1. Filtrado (Lógica existente)
         if (estado == null) estado = "activos";
+        
         switch (estado.toLowerCase()) {
-            case "cerrados": ciclos = cicloRepository.findByActivo(0); break;
-            case "todos": ciclos = cicloRepository.findAll(); break;
+            case "cerrados":
+                // Históricos del proyecto
+                ciclos = cicloRepository.findByIdProyectoAndActivo(idProyecto, 0);
+                break;
+            case "todos":
+                // Todos los del proyecto
+                ciclos = cicloRepository.findByIdProyecto(idProyecto);
+                break;
             case "activos":
-            default: ciclos = cicloRepository.findByActivo(1); break;
+            default:
+                // Activos del proyecto
+                ciclos = cicloRepository.findByIdProyectoAndActivo(idProyecto, 1);
+                break;
         }
 
-        // 2. Transformación y Cálculo de KPIs
         return ciclos.stream()
                 .map(ciclo -> {
-                    // Creamos el DTO base
                     CicloDTO dto = new CicloDTO(ciclo);
-                    // Invocamos el método privado para rellenar los contadores
-                    calcularKpisCiclo(dto);
+                    calcularKpisCiclo(dto); // Mantenemos el cálculo de KPIs existente
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -193,6 +213,87 @@ public class CicloService {
                 .orElseThrow(() -> new RuntimeException("Ciclo no encontrado con ID: " + idCiclo));
         
         return new CicloDTO(ciclo);
+    }
+    
+    public List<ReporteCicloDetalleDTO> getReporteDetallado(Integer idCiclo) {
+        // 1. Obtener el alcance (asignaciones)
+        List<CicloCaso> asignaciones = cicloCasoRepository.findByIdCiclo(idCiclo);
+        
+        if (asignaciones.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Obtener mapa de nombres de componentes (Optimización)
+        // Extraemos IDs de componentes de los casos
+        List<Long> idsComponentes = asignaciones.stream()
+                .map(cc -> (long) cc.getCaso().getIdComponente())
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<Long, String> mapaComponentes = componenteRepository.findAllById(idsComponentes).stream()
+                .collect(Collectors.toMap(Componente::getId_componente, Componente::getNombre_componente));
+        
+        // Traemos todos los estados (son pocos) y los mapeamos ID -> Nombre
+        Map<Integer, String> mapaEstadosModificacion = estadoModificacionRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        em -> em.getId_estado_modificacion().intValue(), // Key: ID (int)
+                        EstadoModificacion::getNombre                    // Value: Nombre (String)
+                ));
+
+        // 3. Obtener TODAS las evidencias de este ciclo
+        List<Evidencia> evidenciasDelCiclo = evidenciaRepository.findByIdCiclo(idCiclo);
+
+        // 4. Agrupar evidencias por Caso y quedarse con la ÚLTIMA (Max Fecha)
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = evidenciasDelCiclo.stream()
+                .collect(Collectors.toMap(
+                        Evidencia::getIdCaso,       // Key: ID Caso
+                        Function.identity(),        // Value: La evidencia
+                        (e1, e2) -> e1.getFechaEvidencia().after(e2.getFechaEvidencia()) ? e1 : e2 // Merge: Ganador por fecha
+                ));
+
+        // 5. Construir el reporte iterando sobre el alcance
+        return asignaciones.stream().map(asignacion -> {
+            ReporteCicloDetalleDTO dto = new ReporteCicloDetalleDTO();
+            Caso caso = asignacion.getCaso();
+
+            // Datos del Caso y Componente
+            dto.setIdCaso(caso.getId_caso());
+            dto.setNombreCaso(caso.getNombre_caso());
+            dto.setVersionCaso(caso.getVersion());
+            dto.setNombreComponente(mapaComponentes.getOrDefault((long) caso.getIdComponente(), "Desconocido"));
+            // Obtenemos el nombre del estado usando el ID guardado en el caso
+            String nombreActualizacion = mapaEstadosModificacion.getOrDefault(
+                    caso.getId_estado_modificacion(), 
+                    "Desconocido"
+            );
+            dto.setActualizacion(nombreActualizacion);
+
+            // Datos de la Ejecución (Si existe)
+            Evidencia evidencia = ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue());
+            
+            if (evidencia != null) {
+                dto.setEstadoEjecucion(evidencia.getEstado_evidencia());
+                dto.setFechaEjecucion(evidencia.getFechaEvidencia());
+                dto.setObservacion(evidencia.getDescripcion_evidencia());
+                
+             // Mapeamos el id_jira numérico. Si es > 0 lo asignamos, si no, null.
+                if (evidencia.getId_jira() > 0) {
+                    dto.setJiraDefecto(evidencia.getId_jira());
+                } else {
+                    dto.setJiraDefecto(null);
+                }
+
+                if (evidencia.getUsuarioEjecutante() != null) {
+                    dto.setTester(evidencia.getUsuarioEjecutante().getNombreUsuario());
+                }
+            } else {
+                // Si no hay ejecución en este ciclo, enviamos nulls explícitos (o valores por defecto)
+                dto.setEstadoEjecucion(null);
+                dto.setJiraDefecto(null);
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     // Pendiente: Métodos para calcular KPIs (casosCertificados, casosError, etc.)

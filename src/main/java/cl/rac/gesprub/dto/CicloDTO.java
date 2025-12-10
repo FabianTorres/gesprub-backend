@@ -21,6 +21,9 @@ public class CicloDTO {
     private Integer idUsuarioCierre;
     private String nombreUsuarioCierre;
     private Integer activo;
+    
+    private Long idProyecto;
+    private String nombreProyecto;
 
     // Campos de reporte (se poblarán en el servicio)
     private Integer totalCasosAsignados = 0;
@@ -41,6 +44,11 @@ public class CicloDTO {
         this.idUsuarioCreador = ciclo.getIdUsuarioCreador();
         this.idUsuarioCierre = ciclo.getIdUsuarioCierre();
         this.activo = ciclo.getActivo();
+        this.idProyecto = ciclo.getIdProyecto();
+        
+        if (ciclo.getProyecto() != null) {
+            this.nombreProyecto = ciclo.getProyecto().getNombre_proyecto();
+        }
         
         if (ciclo.getUsuarioCreador() != null) {
             this.nombreUsuarioCreador = ciclo.getUsuarioCreador().getNombreUsuario();

@@ -9,4 +9,10 @@ import java.util.List;
 public interface CicloRepository extends JpaRepository<Ciclo, Integer> {
     
     List<Ciclo> findByActivo(Integer activo);
+    
+    // Buscar por proyecto y estado activo (para el filtro por defecto "activos")
+    List<Ciclo> findByIdProyectoAndActivo(Long idProyecto, Integer activo);
+
+    // Buscar todos los de un proyecto (para el filtro "todos")
+    List<Ciclo> findByIdProyecto(Long idProyecto);
 }

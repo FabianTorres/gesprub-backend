@@ -62,4 +62,11 @@ public class Ciclo {
     
     @Column(name = "activo", nullable = false)
     private Integer activo = 1; // Default a 1, aunque DDL lo fuerza
+    
+    @Column(name = "id_proyecto", nullable = false)
+    private Long idProyecto;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_proyecto", insertable = false, updatable = false)
+    private Proyecto proyecto;
 }
