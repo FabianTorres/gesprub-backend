@@ -34,4 +34,15 @@ public interface CicloCasoRepository extends JpaRepository<CicloCaso, Integer> {
      * Cuenta el total de casos asignados a un ciclo (Alcance Total).
      */
     long countByIdCiclo(Integer idCiclo);
+    
+    
+    /**
+     * Obtiene los ciclos activos para una lista de IDs de casos.
+     * Retorna un Array de Objetos: [Long idCaso, Integer idCiclo, String jiraKey, String nombre]
+     */
+    @Query("SELECT cc.idCaso, c.idCiclo, c.jiraKey, c.nombre " +
+           "FROM CicloCaso cc " +
+           "JOIN cc.ciclo c " +
+           "WHERE c.activo = 1 AND cc.idCaso IN :idsCasos")
+    List<Object[]> findCiclosActivosParaVariosCasos(@Param("idsCasos") List<Long> idsCasos);
 }

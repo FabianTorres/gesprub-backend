@@ -5,10 +5,14 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Entidad.Usuario;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.sql.Timestamp;
 import java.time.Instant;
+import cl.rac.gesprub.dto.CicloResumenDTO;
 
 @Getter
 @Setter
@@ -38,6 +42,7 @@ public class CasoDTO {
     private UsuarioDTO usuarioEjecutante;
     private Integer idCriticidad;
     private Instant fechaUltimaEvidencia;
+    private List<CicloResumenDTO> ciclosActivos = new ArrayList<>();
     
     // Un constructor que facilita la conversión desde la entidad
     public CasoDTO(Caso caso) {

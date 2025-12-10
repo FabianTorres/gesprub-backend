@@ -17,6 +17,7 @@ import cl.rac.gesprub.Entidad.EstadoModificacion;
 import cl.rac.gesprub.Repositorio.EstadoModificacionRepository;
 import cl.rac.gesprub.dto.CasoImportDTO;
 import cl.rac.gesprub.dto.ValidationErrorDTO;
+import cl.rac.gesprub.Repositorio.CicloCasoRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,9 @@ public class CasoService {
 	
 	@Autowired
     private ComponenteRepository componenteRepository;
+	
+	@Autowired
+    private CicloCasoRepository cicloCasoRepository;
 	
 	public Caso createCaso(Caso caso) {
         return casoRepository.save(caso);
@@ -172,20 +176,20 @@ public class CasoService {
         Map<Integer, String> mapaNombresComponentes = componenteRepository.findAllById(idsDeComponentes).stream()
                 .collect(Collectors.toMap(c -> c.getId_componente().intValue(), Componente::getNombre_componente));
 
-        // 3. Extraemos los IDs de los casos para la siguiente consulta.
-        List<Integer> idCasos = casos.stream()
-                                     .map(caso -> caso.getId_caso().intValue())
-                                     .collect(Collectors.toList());
+        // 3. Extraemos los IDs de los casos.
+        // [MODIFICADO] Creamos dos listas: una de Integer (para evidencias) y una de Long (para ciclos)
+        List<Integer> idCasosInt = casos.stream().map(caso -> caso.getId_caso().intValue()).collect(Collectors.toList());
+        List<Long> idCasosLong = casos.stream().map(Caso::getId_caso).collect(Collectors.toList());
         
         // 4. Obtenemos TODAS las evidencias para TODOS esos casos en UNA SOLA CONSULTA.
-        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idCasos);
+        List<Evidencia> todasLasEvidencias = evidenciaRepository.findByIdCasoIn(idCasosInt);
         
         // 5. Procesamos las evidencias en memoria para agruparlas por caso.
         Map<Integer, List<Evidencia>> evidenciasPorCaso = todasLasEvidencias.stream()
                 .collect(Collectors.groupingBy(Evidencia::getIdCaso));
         
-	    // 6. Creamos un mapa que contenga el conjunto de RUTs únicos para cada caso.
-	    Map<Integer, Set<String>> rutsUnicosPorCaso = evidenciasPorCaso.entrySet().stream()
+        // 6. Creamos un mapa que contenga el conjunto de RUTs únicos para cada caso.
+        Map<Integer, Set<String>> rutsUnicosPorCaso = evidenciasPorCaso.entrySet().stream()
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     entry -> entry.getValue().stream()
@@ -194,8 +198,8 @@ public class CasoService {
                                   .collect(Collectors.toSet())
                 ));
 
-	    // 7. Encontramos la última evidencia activa para cada caso.
-	    Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
+        // 7. Encontramos la última evidencia activa para cada caso.
+        Map<Integer, Evidencia> ultimaEvidenciaPorCaso = new HashMap<>();
         evidenciasPorCaso.forEach((idDelCaso, listaDeEvidencias) -> {
             listaDeEvidencias.stream()
                 .filter(e -> e.getActivo() == 1)
@@ -203,15 +207,45 @@ public class CasoService {
                 .ifPresent(ultima -> ultimaEvidenciaPorCaso.put(idDelCaso, ultima));
         });
 
-	    // 8. Construimos la respuesta final usando el nuevo constructor de CasoConEvidenciaDTO.
+        // ========================================================================================
+        // Paso 7.5. Carga Masiva de Ciclos Activos (Para llenar ciclosActivos)
+        // ========================================================================================
+        List<Object[]> relacionesCiclos = cicloCasoRepository.findCiclosActivosParaVariosCasos(idCasosLong);
+        Map<Long, List<CicloResumenDTO>> mapaCiclos = new HashMap<>();
+
+        for (Object[] fila : relacionesCiclos) {
+            Long idCaso = ((Number) fila[0]).longValue();
+            Integer idCiclo = ((Number) fila[1]).intValue();
+            String jiraKey = (String) fila[2];
+            String nombre = (String) fila[3];
+
+            CicloResumenDTO cicloDto = new CicloResumenDTO();
+            cicloDto.setIdCiclo(idCiclo);
+            cicloDto.setJiraKey(jiraKey);
+            cicloDto.setNombre(nombre);
+
+            mapaCiclos.computeIfAbsent(idCaso, k -> new ArrayList<>()).add(cicloDto);
+        }
+        // ========================================================================================
+
+        // 8. Construimos la respuesta final
         return casos.stream()
-                .map(caso -> new CasoConEvidenciaDTO(
-                    caso,
-                    // Usamos getOrDefault para manejar casos sin evidencia activa (devuelve null de forma segura)
-                    ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
-                    rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet()),
-                    mapaNombresComponentes
-                ))
+                .map(caso -> {
+                    // Creamos el DTO compuesto base
+                    CasoConEvidenciaDTO dtoCompleto = new CasoConEvidenciaDTO(
+                        caso,
+                        ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue()),
+                        rutsUnicosPorCaso.getOrDefault(caso.getId_caso().intValue(), Collections.emptySet()),
+                        mapaNombresComponentes
+                    );
+
+                    // [MODIFICADO] Inyectamos manualmente los ciclos en el DTO interno 'caso'
+                    if (mapaCiclos.containsKey(caso.getId_caso())) {
+                        dtoCompleto.getCaso().setCiclosActivos(mapaCiclos.get(caso.getId_caso()));
+                    }
+
+                    return dtoCompleto;
+                })
                 .collect(Collectors.toList());
     }
     
@@ -756,6 +790,67 @@ public class CasoService {
             creadosCount, 
             actualizadosCount
         );
+    }
+    
+    /**
+     * Obtiene todos los casos convertidos a DTO y enriquecidos con sus ciclos activos.
+     */
+    public List<CasoDTO> getAllCasosComoDto() {
+        // 1. Obtener todos los casos (Entidades)
+        List<Caso> casos = casoRepository.findAll();
+        
+        if (casos.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Convertir a DTOs básicos (sin ciclos aún)
+        // Optimizamos cargando los nombres de componentes si es necesario, 
+        // pero aquí asumimos la conversión básica del constructor.
+        List<CasoDTO> casosDtos = casos.stream()
+                .map(CasoDTO::new)
+                .collect(Collectors.toList());
+
+        // 3. Extraer IDs para la consulta en lote
+        List<Long> idsCasos = casosDtos.stream()
+                .map(CasoDTO::getId_caso)
+                .collect(Collectors.toList());
+        
+
+
+        // 4. Obtener todos los ciclos activos para estos casos (1 sola consulta)
+        List<Object[]> relaciones = cicloCasoRepository.findCiclosActivosParaVariosCasos(idsCasos);
+        
+        
+
+
+        // 5. Agrupar ciclos por idCaso en un Mapa para acceso rápido
+        // Map<IdCaso, List<CicloResumenDTO>>
+        Map<Long, List<CicloResumenDTO>> mapaCiclos = new HashMap<>();
+
+        for (Object[] fila : relaciones) {
+            Long idCaso = (Long) fila[0];
+            Integer idCiclo = (Integer) fila[1];
+            String jiraKey = (String) fila[2];
+            String nombre = (String) fila[3];
+
+            CicloResumenDTO cicloDto = new CicloResumenDTO();
+            cicloDto.setIdCiclo(idCiclo);
+            cicloDto.setJiraKey(jiraKey);
+            cicloDto.setNombre(nombre);
+
+            mapaCiclos.computeIfAbsent(idCaso, k -> new ArrayList<>()).add(cicloDto);
+        }
+        
+
+
+        // 6. Asignar los ciclos a cada CasoDTO
+        for (CasoDTO dto : casosDtos) {
+            if (mapaCiclos.containsKey(dto.getId_caso())) {
+                dto.setCiclosActivos(mapaCiclos.get(dto.getId_caso()));
+            }
+        }
+
+        return casosDtos;
     }
     
     

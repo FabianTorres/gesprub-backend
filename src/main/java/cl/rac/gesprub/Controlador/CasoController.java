@@ -53,8 +53,10 @@ public class CasoController {
     }
 	
 	@GetMapping
-    public List<Caso> getAllCasos() {
-        return casoService.getAllCasos();
+    public ResponseEntity<List<CasoDTO>> getAllCasos() {
+        // Usamos el nuevo método optimizado
+        List<CasoDTO> casos = casoService.getAllCasosComoDto();
+        return ResponseEntity.ok(casos);
     }
 	
 	@GetMapping("/{id}")
