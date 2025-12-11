@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -30,6 +32,7 @@ public class CicloDTO {
     private Integer casosCertificados = 0; // Casos con última evidencia OK
     private Integer casosError = 0;      // Casos con última evidencia NK
     private Integer casosSinEjecutar = 0; // Casos sin evidencia o con evidencia antigua no OK/NK
+    private List<String> componentesInvolucrados = new ArrayList<>();
 
     public CicloDTO() {}
 
@@ -45,6 +48,7 @@ public class CicloDTO {
         this.idUsuarioCierre = ciclo.getIdUsuarioCierre();
         this.activo = ciclo.getActivo();
         this.idProyecto = ciclo.getIdProyecto();
+        
         
         if (ciclo.getProyecto() != null) {
             this.nombreProyecto = ciclo.getProyecto().getNombre_proyecto();

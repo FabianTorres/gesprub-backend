@@ -129,6 +129,9 @@ public class CicloService {
         int sinEjecutar = (int) totalAsignados - (certificados + errores);
         // Aseguramos que no sea negativo (por si acaso hubiera inconsistencias de datos antiguos)
         dto.setCasosSinEjecutar(Math.max(0, sinEjecutar));
+        // D.  Componentes Involucrados
+        List<String> componentes = cicloCasoRepository.findNombresComponentesPorCiclo(idCiclo);
+        dto.setComponentesInvolucrados(componentes);
     }
     
     @Transactional

@@ -45,4 +45,18 @@ public interface CicloCasoRepository extends JpaRepository<CicloCaso, Integer> {
            "JOIN cc.ciclo c " +
            "WHERE c.activo = 1 AND cc.idCaso IN :idsCasos")
     List<Object[]> findCiclosActivosParaVariosCasos(@Param("idsCasos") List<Long> idsCasos);
+    
+    /**
+     * Obtiene los nombres (preferiblemente cortos) de los componentes involucrados.
+     * Lógica: Si existe nombre_corto, úsalo. Si no, usa nombre_componente.
+     */
+    @Query(value = """
+        SELECT DISTINCT COALESCE(co.nombre_corto, co.nombre_componente) as etiqueta
+        FROM ciclos_casos cc
+        INNER JOIN caso ca ON cc.id_caso = ca.id_caso
+        INNER JOIN componente co ON ca.id_componente = co.id_componente
+        WHERE cc.id_ciclo = :idCiclo
+        ORDER BY etiqueta ASC
+    """, nativeQuery = true)
+    List<String> findNombresComponentesPorCiclo(@Param("idCiclo") Integer idCiclo);
 }

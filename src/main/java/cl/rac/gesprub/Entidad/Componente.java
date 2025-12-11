@@ -38,6 +38,8 @@ public class Componente {
 	@Column(name = "id_ambito")
 	private int idAmbito;
 	
+	private String nombre_corto;
+	
 	
 	
 
@@ -95,6 +97,14 @@ public class Componente {
 
 	public void setIdAmbito(int idAmbito) {
 		this.idAmbito = idAmbito;
+	}
+	
+	public String getNombre_corto() {
+		return nombre_corto;
+	}
+
+	public void setNombre_corto(String nombre_corto) {
+		this.nombre_corto = nombre_corto;
 	}
 	
 	

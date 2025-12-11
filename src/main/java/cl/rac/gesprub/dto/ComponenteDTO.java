@@ -9,6 +9,7 @@ import java.time.LocalDate;
 public class ComponenteDTO {
     private Long id_componente;
     private String nombre_componente;
+    private String nombre_corto;
     private int hito_componente;
     private LocalDate fecha_limite;
     private int activo;

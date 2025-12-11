@@ -56,10 +56,12 @@ public class ComponenteService {
         ComponenteDTO dto = new ComponenteDTO();
         dto.setId_componente(componente.getId_componente());
         dto.setNombre_componente(componente.getNombre_componente());
+        dto.setNombre_corto(componente.getNombre_corto());
         dto.setHito_componente(componente.getHito_componente());
         dto.setFecha_limite(componente.getFecha_limite());
         dto.setActivo(componente.getActivo());
         dto.setId_ambito(componente.getIdAmbito());
+        
         
         if (componente.getProyecto() != null) {
             dto.setId_proyecto(componente.getProyecto().getId_proyecto());

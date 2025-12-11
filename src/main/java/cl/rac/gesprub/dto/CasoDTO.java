@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.sql.Timestamp;
 import java.time.Instant;
-import cl.rac.gesprub.dto.CicloResumenDTO;
 
 @Getter
 @Setter

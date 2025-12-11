@@ -26,7 +26,7 @@ public class Ciclo {
     @Column(name = "id_ciclo")
     private Integer idCiclo;
 
-    @Column(name = "jira_key", unique = true, nullable = false, length = 50)
+    @Column(name = "jira_key", nullable = false, length = 50)
     private String jiraKey;
 
     @Column(name = "nombre", nullable = false, length = 255)
