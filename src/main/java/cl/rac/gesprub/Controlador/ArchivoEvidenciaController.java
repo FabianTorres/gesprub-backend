@@ -78,10 +78,16 @@ public class ArchivoEvidenciaController {
      * Previene OutOfMemoryError al no cargar el ZIP en RAM.
      */
     @GetMapping("/componente/{idComponente}/descargar-zip")
-    public ResponseEntity<StreamingResponseBody> descargarZipComponente(@PathVariable Long idComponente) {
+    public ResponseEntity<StreamingResponseBody> descargarZipComponente(
+    		@PathVariable Long idComponente,
+    		@RequestParam(name = "idEstadoModificacion", required = false) Integer idEstadoModificacion) {
         
         // 1. Obtenemos solo el nombre para la cabecera
         String nombreArchivo = archivoEvidenciaService.obtenerNombreZipComponente(idComponente);
+        
+        if (idEstadoModificacion != null) {
+        	nombreArchivo = nombreArchivo.replace(".zip", "_Filtrado.zip");
+        }
 
         // 2. Preparamos las cabeceras
         HttpHeaders headers = new HttpHeaders();
@@ -91,7 +97,7 @@ public class ArchivoEvidenciaController {
 
         // 3. Definimos el cuerpo de la respuesta como una función lambda
         StreamingResponseBody responseBody = outputStream -> {
-            archivoEvidenciaService.generarZipStream(idComponente, outputStream);
+        	archivoEvidenciaService.generarZipStream(idComponente, idEstadoModificacion, outputStream);
         };
 
         // 4. Spring ejecutará esa lambda en un hilo separado, escribiendo directo a la respuesta

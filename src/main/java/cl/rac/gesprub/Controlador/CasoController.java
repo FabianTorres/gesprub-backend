@@ -53,9 +53,9 @@ public class CasoController {
     }
 	
 	@GetMapping
-    public ResponseEntity<List<CasoDTO>> getAllCasos() {
+    public ResponseEntity<List<CasoDTO>> getAllCasos(@RequestParam(required = false, defaultValue = "false") boolean soloActivos) {
         // Usamos el nuevo método optimizado
-        List<CasoDTO> casos = casoService.getAllCasosComoDto();
+        List<CasoDTO> casos = casoService.getAllCasosComoDto(soloActivos);
         return ResponseEntity.ok(casos);
     }
 	

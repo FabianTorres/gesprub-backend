@@ -795,9 +795,17 @@ public class CasoService {
     /**
      * Obtiene todos los casos convertidos a DTO y enriquecidos con sus ciclos activos.
      */
-    public List<CasoDTO> getAllCasosComoDto() {
-        // 1. Obtener todos los casos (Entidades)
-        List<Caso> casos = casoRepository.findAll();
+    public List<CasoDTO> getAllCasosComoDto(boolean soloActivos) {
+    	List<Caso> casos;
+
+        // 1. Decisión de Fuente de Datos
+        if (soloActivos) {
+            // "Modo Selección": Solo traemos lo que sirve
+            casos = casoRepository.findByActivo(1);
+        } else {
+            // "Modo Histórico/Admin": Traemos todo
+            casos = casoRepository.findAll();
+        }
         
         if (casos.isEmpty()) {
             return Collections.emptyList();
@@ -815,13 +823,8 @@ public class CasoService {
                 .map(CasoDTO::getId_caso)
                 .collect(Collectors.toList());
         
-
-
         // 4. Obtener todos los ciclos activos para estos casos (1 sola consulta)
         List<Object[]> relaciones = cicloCasoRepository.findCiclosActivosParaVariosCasos(idsCasos);
-        
-        
-
 
         // 5. Agrupar ciclos por idCaso en un Mapa para acceso rápido
         // Map<IdCaso, List<CicloResumenDTO>>
@@ -840,8 +843,6 @@ public class CasoService {
 
             mapaCiclos.computeIfAbsent(idCaso, k -> new ArrayList<>()).add(cicloDto);
         }
-        
-
 
         // 6. Asignar los ciclos a cada CasoDTO
         for (CasoDTO dto : casosDtos) {
@@ -852,7 +853,5 @@ public class CasoService {
 
         return casosDtos;
     }
-    
-    
 
 }

@@ -146,9 +146,12 @@ public class ArchivoEvidenciaService {
      * sin almacenar el archivo completo en memoria.
      */
     @Transactional(readOnly = true)
-    public void generarZipStream(Long idComponente, OutputStream outputStream) {
-        // 1. Buscar datos (igual que antes)
-        List<Caso> casos = casoRepository.findByIdComponente(idComponente.intValue());
+    public void generarZipStream(Long idComponente, Integer idEstadoModificacion, OutputStream outputStream) {
+    	// 1. Usamos la nueva query con filtro opcional
+        List<Caso> casos = casoRepository.findByComponenteAndEstadoModificacionOpcional(
+                idComponente.intValue(), 
+                idEstadoModificacion
+        );
         if (casos.isEmpty()) return;
         
         List<Integer> idsCasos = casos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());

@@ -48,4 +48,25 @@ public interface CasoRepository extends JpaRepository<Caso, Long>{
      * Busca todos los casos activos que pertenecen a una lista de componentes.
      */
     List<Caso> findByActivoAndIdComponenteIn(int activo, List<Integer> idComponentes);
+    
+    
+    // 1. Buscar todos los casos activos (Global)
+    List<Caso> findByActivo(Integer activo);
+
+    // 2. Buscar casos activos por componente (Específico)
+    List<Caso> findByIdComponenteAndActivo(int idComponente, Integer activo);
+    
+    
+    /**
+     * Busca casos activos de un componente, permitiendo un filtro opcional por estado de modificación.
+     * Lógica: (idEstadoMod IS NULL) -> Trae todos los del componente.
+     * (idEstadoMod TIENE VALOR) -> Trae solo los que coincidan.
+     */
+    @Query("SELECT c FROM Caso c " +
+           "WHERE c.idComponente = :idComponente " +
+           "AND c.activo = 1 " +
+           "AND (:idEstadoMod IS NULL OR c.id_estado_modificacion = :idEstadoMod)")
+    List<Caso> findByComponenteAndEstadoModificacionOpcional(
+            @Param("idComponente") int idComponente, 
+            @Param("idEstadoMod") Integer idEstadoMod);
 }

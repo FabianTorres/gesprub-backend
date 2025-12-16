@@ -70,5 +70,7 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	    
 	    // Mtodo para traer todas las evidencias asociadas a un ciclo
 	    List<Evidencia> findByIdCiclo(Integer idCiclo);
+	    
+	    
 
 }
