@@ -9,6 +9,7 @@ import cl.rac.gesprub.Repositorio.ComponenteRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
 import cl.rac.gesprub.dto.DetallePlanPruebasDTO;
 import jakarta.transaction.Transactional;
+import cl.rac.gesprub.Entidad.Fuente;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,12 +48,12 @@ public class ReporteService {
             return new ArrayList<>();
         }
 
-        // 2. Obtener nombres de componentes (Optimización: una sola consulta o desde cache)
+        // 2. Obtener nombres de componentes (Optimizacion: una sola consulta o desde cache)
         List<Long> idsComponentes = casos.stream().map(c -> (long) c.getIdComponente()).distinct().collect(Collectors.toList());
         Map<Long, String> nombresComponentes = componenteRepository.findAllById(idsComponentes).stream()
                 .collect(Collectors.toMap(Componente::getId_componente, Componente::getNombre_componente));
 
-        // 3. Obtener la ÚLTIMA evidencia para cada caso (Solo activas)
+        // 3. Obtener la ULTIMA evidencia para cada caso (Solo activas)
         // Usamos una consulta personalizada para traer solo las últimas evidencias de estos casos
         List<Integer> idsCasosInt = casos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
         List<Evidencia> evidencias = evidenciaRepository.findByIdCasoIn(idsCasosInt); // Asumiendo que este método ya existe y trae todo
@@ -77,6 +78,12 @@ public class ReporteService {
             dto.setPasos(caso.getPasos());
             dto.setResultado_esperado(caso.getResultado_esperado());
             dto.setVersion_caso(caso.getVersion());
+            if (caso.getFuentes() != null && !caso.getFuentes().isEmpty()) {
+                String fuentesConcat = caso.getFuentes().stream()
+                        .map(Fuente::getNombre_fuente) 
+                        .collect(Collectors.joining(", "));
+                dto.setNombres_fuentes(fuentesConcat);
+            }
 
             // Datos de la Evidencia
             Evidencia evidencia = ultimaEvidenciaPorCaso.get(caso.getId_caso().intValue());

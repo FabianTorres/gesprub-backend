@@ -22,6 +22,8 @@ public class DetallePlanPruebasDTO {
     
     // Archivos concatenados
     private String nombres_archivos;
+    
+    private String nombres_fuentes;
 
     // Constructor vacío
     public DetallePlanPruebasDTO() {}
