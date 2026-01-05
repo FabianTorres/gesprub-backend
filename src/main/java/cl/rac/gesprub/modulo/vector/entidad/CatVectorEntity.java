@@ -2,7 +2,12 @@ package cl.rac.gesprub.modulo.vector.entidad;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,14 +17,32 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CatVectorEntity {
+	
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // Nueva PK Técnica
 
-    @Id
-    @Column(name = "VECTOR_ID")
+    @Column(name = "VECTOR_ID", nullable = false)
     private Integer vectorId;
+    
+    @Column(nullable = false)
+    private Integer periodo;
 
     @Column(name = "NOMBRE")
     private String nombre;
 
     @Column(name = "TIPO_TECNOLOGIA")
-    private String tipoTecnologia; // 'BATCH' o 'BIGDATA_INTEGRADO'
+    private String tipoTecnologia; 
+    
+    @Column(nullable = false)
+    private Boolean estado = true;
+
+    // Relaciones con Versiones
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "VERSION_INGRESO_ID")
+    private CatVersionEntity versionIngreso;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "VERSION_RETIRO_ID")
+    private CatVersionEntity versionRetiro;
 }

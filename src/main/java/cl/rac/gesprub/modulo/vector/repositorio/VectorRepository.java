@@ -26,4 +26,6 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
      */
     @Query("SELECT v FROM VectorEntity v, CatVectorEntity c WHERE v.vector = c.vectorId AND c.tipoTecnologia = 'BIGDATA_INTEGRADO'")
     List<VectorEntity> findAllBigDataVectors();
+    
+    List<VectorEntity> findByPeriodo(Integer periodo);
 }

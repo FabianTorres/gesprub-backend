@@ -1,9 +1,12 @@
 package cl.rac.gesprub.modulo.vector.controlador;
 
+import cl.rac.gesprub.modulo.vector.dto.AltaMasivaDTO;
+import cl.rac.gesprub.modulo.vector.dto.BajaMasivaDTO;
+import cl.rac.gesprub.modulo.vector.dto.BajaRequestDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVectorDTO;
+import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorLogDTO;
-import cl.rac.gesprub.modulo.vector.entidad.CatVectorEntity;
 import cl.rac.gesprub.modulo.vector.servicio.VectorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -25,8 +28,10 @@ public class VectorController {
     private final VectorService vectorService;
 
     @GetMapping
-    public ResponseEntity<List<VectorDTO>> listar() {
-        return ResponseEntity.ok(vectorService.listarTodos());
+    public ResponseEntity<List<VectorDTO>> listar(
+            @RequestParam(required = false) Integer periodo) {
+        
+        return ResponseEntity.ok(vectorService.listarDatosCargados(periodo));
     }
 
     @PostMapping
@@ -102,32 +107,82 @@ public class VectorController {
     }
     
     // 	Obtener catalogo
+//    @GetMapping("/catalogo")
+//    public ResponseEntity<List<CatVectorEntity>> getCatalogo() {
+//        return ResponseEntity.ok(vectorService.listarCatalogo());
+//    }
+    
     @GetMapping("/catalogo")
-    public ResponseEntity<List<CatVectorEntity>> getCatalogo() {
-        return ResponseEntity.ok(vectorService.listarCatalogo());
+    public ResponseEntity<List<CatVectorDTO>> listarCatalogo(
+            @RequestParam Integer periodo,
+            @RequestParam(defaultValue = "false") Boolean incluirEliminados) {
+        return ResponseEntity.ok(vectorService.listarCatalogoPorPeriodo(periodo, incluirEliminados));
+    }
+    
+    @PostMapping("/catalogo/alta-masiva")
+    public ResponseEntity<Void> altaMasiva(@RequestBody AltaMasivaDTO dto) {
+        vectorService.altaMasivaVectores(dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/catalogo/baja-masiva")
+    public ResponseEntity<Void> bajaMasiva(@RequestBody BajaMasivaDTO dto) {
+        vectorService.bajaMasivaVectores(dto);
+        return ResponseEntity.ok().build();
     }
     
     
- // 1. Crear Vector en Catálogo
+    // Crear Vector en Catalogo
     @PostMapping("/catalogo")
     public ResponseEntity<?> crearVectorCatalogo(@RequestBody CatVectorDTO dto) {
         try {
             CatVectorDTO nuevo = vectorService.crearVectorCatalogo(dto);
             return ResponseEntity.ok(nuevo);
         } catch (RuntimeException e) {
-            // Capturamos el error de duplicado para devolver un Bad Request o Conflict
             return ResponseEntity.status(409).body(e.getMessage());
         }
     }
 
     // 2. Actualizar Vector en Catálogo
     @PutMapping("/catalogo/{id}")
-    public ResponseEntity<?> actualizarVectorCatalogo(@PathVariable Integer id, @RequestBody CatVectorDTO dto) {
+    public ResponseEntity<?> actualizarVectorCatalogo(@PathVariable Long id, @RequestBody CatVectorDTO dto) {
         try {
             CatVectorDTO actualizado = vectorService.actualizarVectorCatalogo(id, dto);
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {
             return ResponseEntity.status(404).body(e.getMessage());
         }
+    }
+    
+    @PostMapping("/catalogo/{id}/baja")
+    public ResponseEntity<?> darBajaVector(
+            @PathVariable Long id, 
+            @RequestBody BajaRequestDTO request) {
+        try {
+            vectorService.darBajaVector(id, request.getVersionRetiro());
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            // Retornamos 400 Bad Request si la versión no existe o el ID es inválido
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    
+    @GetMapping("/versiones")
+    public ResponseEntity<List<CatVersionDTO>> listarVersiones(@RequestParam Integer periodo) {
+        return ResponseEntity.ok(vectorService.listarVersiones(periodo));
+    }
+
+    @PostMapping("/versiones")
+    public ResponseEntity<CatVersionDTO> crearVersion(@RequestBody CatVersionDTO dto) {
+        return ResponseEntity.ok(vectorService.crearVersion(dto));
+    }
+    
+    @PostMapping("/admin/rollover")
+    public ResponseEntity<String> rollover(
+            @RequestParam Integer periodoOrigen,
+            @RequestParam Integer periodoDestino) {
+        vectorService.ejecutarRollover(periodoOrigen, periodoDestino);
+        return ResponseEntity.ok("Rollover completado exitosamente de " + periodoOrigen + " a " + periodoDestino);
     }
 }

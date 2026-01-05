@@ -1,16 +1,23 @@
 package cl.rac.gesprub.modulo.vector.servicio;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import cl.rac.gesprub.modulo.vector.dto.VectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorLogDTO;
+import cl.rac.gesprub.modulo.vector.dto.AltaMasivaDTO;
+import cl.rac.gesprub.modulo.vector.dto.BajaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVectorDTO;
+import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
 import cl.rac.gesprub.modulo.vector.entidad.CatVectorEntity;
+import cl.rac.gesprub.modulo.vector.entidad.CatVersionEntity;
 import cl.rac.gesprub.modulo.vector.entidad.VectorEntity;
 import cl.rac.gesprub.modulo.vector.entidad.VectorLogEntity;
 import cl.rac.gesprub.modulo.vector.repositorio.CatVectorRepository;
+import cl.rac.gesprub.modulo.vector.repositorio.CatVersionRepository;
 import cl.rac.gesprub.modulo.vector.repositorio.VectorLogRepository;
 import cl.rac.gesprub.modulo.vector.repositorio.VectorRepository;
 
@@ -28,24 +35,170 @@ public class VectorService {
     private final VectorRepository vectorRepository;
     private final VectorLogRepository vectorLogRepository;
     private final CatVectorRepository catVectorRepository;
+    @Autowired 
+    private CatVersionRepository catVersionRepository;
     
     public List<CatVectorEntity> listarCatalogo() {
         return catVectorRepository.findAll();
     }
+    
+    
+    public List<CatVersionDTO> listarVersiones(Integer periodo) {
+        return catVersionRepository.findByPeriodoOrderByFechaRegistroDesc(periodo).stream()
+                .map(e -> {
+                    CatVersionDTO dto = new CatVersionDTO();
+                    dto.setId(e.getId());
+                    dto.setPeriodo(e.getPeriodo());
+                    dto.setCodigoVersion(e.getCodigoVersion());
+                    dto.setFechaRegistro(e.getFechaRegistro());
+                    dto.setDescripcion(e.getDescripcion());
+                    return dto;
+                }).collect(Collectors.toList());
+    }
+    
+    public List<VectorDTO> listarDatosCargados(Integer periodo) {
+        List<VectorEntity> resultados;
 
-    public List<VectorDTO> listarTodos() {
-        return vectorRepository.findAll().stream()
+        if (periodo != null) {
+            // Si hay filtro, buscamos solo ese periodo
+            resultados = vectorRepository.findByPeriodo(periodo);
+        } else {
+            // Si es null, traemos todo (comportamiento default)
+            resultados = vectorRepository.findAll();
+        }
+
+        return resultados.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public CatVersionDTO crearVersion(CatVersionDTO dto) {
+        if (catVersionRepository.existsByPeriodoAndCodigoVersion(dto.getPeriodo(), dto.getCodigoVersion())) {
+            throw new RuntimeException("La versión " + dto.getCodigoVersion() + " ya existe para el periodo " + dto.getPeriodo());
+        }
+        CatVersionEntity entity = new CatVersionEntity();
+        entity.setPeriodo(dto.getPeriodo());
+        entity.setCodigoVersion(dto.getCodigoVersion());
+        entity.setDescripcion(dto.getDescripcion());
+        entity.setFechaRegistro(LocalDateTime.now());
+        
+        CatVersionEntity saved = catVersionRepository.save(entity);
+        dto.setId(saved.getId());
+        dto.setFechaRegistro(saved.getFechaRegistro());
+        return dto;
+    }
+    
+    public List<CatVectorDTO> listarCatalogoPorPeriodo(Integer periodo, Boolean incluirEliminados) {
+        List<CatVectorEntity> entities;
+        if (Boolean.TRUE.equals(incluirEliminados)) {
+            entities = catVectorRepository.findByPeriodo(periodo);
+        } else {
+            entities = catVectorRepository.findByPeriodoAndEstadoTrue(periodo);
+        }
+
+        return entities.stream().map(e -> {
+            CatVectorDTO dto = new CatVectorDTO();
+            dto.setId(e.getId());
+            dto.setVectorId(e.getVectorId());
+            dto.setPeriodo(e.getPeriodo());
+            dto.setNombre(e.getNombre());
+            dto.setTipoTecnologia(e.getTipoTecnologia());
+            dto.setEstado(e.getEstado());
+            if (e.getVersionIngreso() != null) dto.setVersionIngreso(e.getVersionIngreso().getCodigoVersion());
+            if (e.getVersionRetiro() != null) dto.setVersionRetiro(e.getVersionRetiro().getCodigoVersion());
+            return dto;
+        }).collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public void altaMasivaVectores(AltaMasivaDTO dto) {
+        CatVersionEntity version = catVersionRepository.findById(dto.getVersionId())
+                .orElseThrow(() -> new RuntimeException("Versión no encontrada"));
+
+        for (CatVectorDTO vDto : dto.getVectores()) {
+            // Validar unicidad en el periodo
+            if (catVectorRepository.existsByVectorIdAndPeriodo(vDto.getVectorId(), version.getPeriodo())) {
+                continue; // O lanzar error, depende de la regla. Aquí omitimos duplicados.
+            }
+            
+            CatVectorEntity entity = new CatVectorEntity();
+            entity.setVectorId(vDto.getVectorId());
+            entity.setNombre(vDto.getNombre());
+            entity.setTipoTecnologia(vDto.getTipoTecnologia());
+            entity.setPeriodo(version.getPeriodo()); // El periodo lo dicta la versión
+            entity.setEstado(true);
+            entity.setVersionIngreso(version); // Link a la versión
+            
+            catVectorRepository.save(entity);
+        }
+    }
+    
+    @Transactional
+    public void bajaMasivaVectores(BajaMasivaDTO dto) {
+        CatVersionEntity version = catVersionRepository.findById(dto.getVersionId())
+                .orElseThrow(() -> new RuntimeException("Versión no encontrada"));
+
+        for (Integer vecIdNegocio : dto.getVectorIds()) {
+            CatVectorEntity entity = catVectorRepository.findByVectorIdAndPeriodo(vecIdNegocio, version.getPeriodo());
+            if (entity != null && entity.getEstado()) {
+                entity.setEstado(false); // Soft Delete
+                entity.setVersionRetiro(version); // Link a la versión de baja
+                catVectorRepository.save(entity);
+            }
+        }
+    }
+    
+    
+    @Transactional
+    public void ejecutarRollover(Integer periodoOrigen, Integer periodoDestino) {
+        // 1. Verificar si ya existen datos en destino (Seguridad)
+        if (!catVectorRepository.findByPeriodo(periodoDestino).isEmpty()) {
+            throw new RuntimeException("El periodo destino " + periodoDestino + " ya contiene datos. No se puede realizar Rollover.");
+        }
+
+        // 2. Crear o buscar Versión 1.0 para el destino
+        CatVersionEntity v1Destino = catVersionRepository.findByPeriodoAndCodigoVersion(periodoDestino, "1.0");
+        if (v1Destino == null) {
+            v1Destino = new CatVersionEntity();
+            v1Destino.setPeriodo(periodoDestino);
+            v1Destino.setCodigoVersion("1.0");
+            v1Destino.setDescripcion("Generado por Rollover desde " + periodoOrigen);
+            v1Destino.setFechaRegistro(LocalDateTime.now());
+            v1Destino = catVersionRepository.save(v1Destino);
+        }
+
+        // 3. Obtener vectores activos del origen
+        List<CatVectorEntity> origenList = catVectorRepository.findByPeriodoAndEstadoTrue(periodoOrigen);
+
+        // 4. Clonar
+        for (CatVectorEntity origen : origenList) {
+            CatVectorEntity destino = new CatVectorEntity();
+            destino.setVectorId(origen.getVectorId()); // Mismo ID de negocio
+            destino.setNombre(origen.getNombre());
+            destino.setTipoTecnologia(origen.getTipoTecnologia());
+            destino.setPeriodo(periodoDestino); // Nuevo periodo
+            destino.setEstado(true);
+            destino.setVersionIngreso(v1Destino); // Nacen en la v1.0 del nuevo año
+            
+            catVectorRepository.save(destino);
+        }
     }
 
     @Transactional
     public VectorDTO guardar(VectorDTO dto) {
     	
-    	CatVectorEntity catEntry = catVectorRepository.findById(dto.getVector())
-                .orElseThrow(() -> new RuntimeException("Error: El vector " + dto.getVector() + " no existe en el catálogo maestro."));
-
+    	CatVectorEntity catEntry = catVectorRepository.findByVectorIdAndPeriodo(dto.getVector(), dto.getPeriodo());
         
+    	if (catEntry == null) {
+            // Si retorna null es que no existe esa combinación en el catálogo
+            throw new RuntimeException("Error: El vector " + dto.getVector() + " no está catalogado para el periodo " + dto.getPeriodo());
+        }
+    	
+    	if (!catEntry.getEstado()) {
+            throw new RuntimeException("Error: El vector " + dto.getVector() + " existe pero está INACTIVO (Eliminado) para el periodo " + dto.getPeriodo());
+       }
+    	
     	VectorEntity entity = mapToEntity(dto);
     	if (entity.getElvcSeq() == null || entity.getElvcSeq().trim().isEmpty()) {
             if ("BIGDATA_INTEGRADO".equals(catEntry.getTipoTecnologia())) {
@@ -70,8 +223,10 @@ public class VectorService {
     @Transactional
     public VectorDTO actualizar(Long id, VectorDTO dto) {
     	
-    	catVectorRepository.findById(dto.getVector())
-        .orElseThrow(() -> new RuntimeException("Error: El vector " + dto.getVector() + " no existe en el catálogo maestro."));
+    	CatVectorEntity catEntry = catVectorRepository.findByVectorIdAndPeriodo(dto.getVector(), dto.getPeriodo());
+        if (catEntry == null) {
+             throw new RuntimeException("Error: El vector " + dto.getVector() + " no está catalogado para el periodo " + dto.getPeriodo());
+        }
         VectorEntity entity = vectorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vector no encontrado"));
 
@@ -243,39 +398,100 @@ public class VectorService {
     
     @Transactional
     public CatVectorDTO crearVectorCatalogo(CatVectorDTO dto) {
-        // 1. Validar que no exista el ID (PK)
-        if (catVectorRepository.existsById(dto.getVectorId())) {
-            throw new RuntimeException("Error: Ya existe un vector en el catálogo con el ID " + dto.getVectorId());
-            // Nota: En un entorno real, podrias lanzar una excepcion personalizada que retorne 409 Conflict
+        //Validar unicidad (VectorID + Periodo)
+        if (catVectorRepository.existsByVectorIdAndPeriodo(dto.getVectorId(), dto.getPeriodo())) {
+            throw new RuntimeException("El vector " + dto.getVectorId() + " ya existe en el periodo " + dto.getPeriodo());
         }
 
-        // 2. Mapear DTO -> Entidad
         CatVectorEntity entity = new CatVectorEntity();
         entity.setVectorId(dto.getVectorId());
+        entity.setPeriodo(dto.getPeriodo());
         entity.setNombre(dto.getNombre());
         entity.setTipoTecnologia(dto.getTipoTecnologia());
+        entity.setEstado(true); // Nace activo
 
-        // 3. Guardar
+        //Logica de Version de Ingreso (Manual o Default)
+        String codigoVer = (dto.getVersionIngreso() != null && !dto.getVersionIngreso().isEmpty()) 
+                           ? dto.getVersionIngreso() 
+                           : "1.0"; 
+        
+        CatVersionEntity versionObj = resolverVersion(dto.getPeriodo(), codigoVer, true);
+        entity.setVersionIngreso(versionObj);
+
         CatVectorEntity guardado = catVectorRepository.save(entity);
-
-        // 4. Retornar DTO
-        return new CatVectorDTO(guardado.getVectorId(), guardado.getNombre(), guardado.getTipoTecnologia());
+        return mapToCatalogoDTO(guardado);
     }
 
     // GESTION DE CATALOGO: ACTUALIZAR
     @Transactional
-    public CatVectorDTO actualizarVectorCatalogo(Integer id, CatVectorDTO dto) {
-        // 1. Buscar existencia
+    public CatVectorDTO actualizarVectorCatalogo(Long id, CatVectorDTO dto) {
         CatVectorEntity entity = catVectorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Error: No se encontró el vector con ID " + id));
+                .orElseThrow(() -> new RuntimeException("Vector no encontrado con ID: " + id));
 
-        // 2. Actualizar campos (El ID no se toca porque es PK y PathVariable)
+        // Actualizamos campos básicos
         entity.setNombre(dto.getNombre());
         entity.setTipoTecnologia(dto.getTipoTecnologia());
 
-        // 3. Guardar cambios
-        CatVectorEntity actualizado = catVectorRepository.save(entity);
+        // Si el usuario quiere corregir la versión de ingreso
+        if (dto.getVersionIngreso() != null && !dto.getVersionIngreso().isEmpty()) {
+        	CatVersionEntity nuevaVersion = resolverVersion(entity.getPeriodo(), dto.getVersionIngreso(), true);
+            entity.setVersionIngreso(nuevaVersion);
+        }
 
-        return new CatVectorDTO(actualizado.getVectorId(), actualizado.getNombre(), actualizado.getTipoTecnologia());
+        CatVectorEntity actualizado = catVectorRepository.save(entity);
+        return mapToCatalogoDTO(actualizado);
+    }
+    
+    @Transactional
+    public void darBajaVector(Long id, String codigoVersionRetiro) {
+        CatVectorEntity entity = catVectorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vector no encontrado con ID: " + id));
+
+        //Validar que la versión de retiro exista en el periodo del vector
+        CatVersionEntity versionRetiro = resolverVersion(entity.getPeriodo(), codigoVersionRetiro, true);
+
+        //Aplicar Baja Lógica
+        entity.setEstado(false);
+        entity.setVersionRetiro(versionRetiro);
+
+        catVectorRepository.save(entity);
+    }
+    
+    private CatVectorDTO mapToCatalogoDTO(CatVectorEntity e) {
+        CatVectorDTO dto = new CatVectorDTO();
+        dto.setId(e.getId());
+        dto.setVectorId(e.getVectorId());
+        dto.setPeriodo(e.getPeriodo());
+        dto.setNombre(e.getNombre());
+        dto.setTipoTecnologia(e.getTipoTecnologia());
+        dto.setEstado(e.getEstado());
+        if (e.getVersionIngreso() != null) dto.setVersionIngreso(e.getVersionIngreso().getCodigoVersion());
+        if (e.getVersionRetiro() != null) dto.setVersionRetiro(e.getVersionRetiro().getCodigoVersion());
+        return dto;
+    }
+    
+    private CatVersionEntity resolverVersion(Integer periodo, String codigoVersion, boolean crearSiNoExiste) {
+        // 1. Buscamos la versión
+        CatVersionEntity version = catVersionRepository.findByPeriodoAndCodigoVersion(periodo, codigoVersion);
+        
+        // 2. Si existe, la devolvemos
+        if (version != null) {
+            return version;
+        }
+
+        // 3. Si no existe...
+        if (crearSiNoExiste) {
+            // ... La creamos al vuelo
+            CatVersionEntity nueva = new CatVersionEntity();
+            nueva.setPeriodo(periodo);
+            nueva.setCodigoVersion(codigoVersion);
+            nueva.setDescripcion("Generada automáticamente por baja de vector");
+            nueva.setFechaRegistro(LocalDateTime.now());
+            
+            return catVersionRepository.save(nueva);
+        } else {
+            // ... O lanzamos error (comportamiento estricto antiguo)
+            throw new RuntimeException("Error: La versión normativa '" + codigoVersion + "' no existe para el periodo " + periodo);
+        }
     }
 }
