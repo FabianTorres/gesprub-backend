@@ -71,4 +71,12 @@ public class AzureStorageService {
         String sasToken = blobClient.generateSas(new BlobServiceSasSignatureValues(expiryTime, permissions));
         return String.format("%s?%s", blobClient.getBlobUrl(), sasToken);
     }
+    
+    public long getFileSize(String containerName, String blobPath) {
+        
+        BlobServiceClient client = getBlobServiceClient(); 
+        
+        BlobClient blobClient = client.getBlobContainerClient(containerName).getBlobClient(blobPath);
+        return blobClient.getProperties().getBlobSize();
+    }
 }

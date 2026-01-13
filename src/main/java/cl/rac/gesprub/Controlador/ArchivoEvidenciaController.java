@@ -80,7 +80,8 @@ public class ArchivoEvidenciaController {
     @GetMapping("/componente/{idComponente}/descargar-zip")
     public ResponseEntity<StreamingResponseBody> descargarZipComponente(
     		@PathVariable Long idComponente,
-    		@RequestParam(name = "idEstadoModificacion", required = false) Integer idEstadoModificacion) {
+    		@RequestParam(name = "idEstadoModificacion", required = false) Integer idEstadoModificacion,
+    		@RequestParam(defaultValue = "10485760") Long limiteBytes) {
         
         // 1. Obtenemos solo el nombre para la cabecera
         String nombreArchivo = archivoEvidenciaService.obtenerNombreZipComponente(idComponente);
@@ -97,7 +98,7 @@ public class ArchivoEvidenciaController {
 
         // 3. Definimos el cuerpo de la respuesta como una función lambda
         StreamingResponseBody responseBody = outputStream -> {
-        	archivoEvidenciaService.generarZipStream(idComponente, idEstadoModificacion, outputStream);
+            archivoEvidenciaService.generarZipStreamInteligente(idComponente, idEstadoModificacion, limiteBytes, outputStream);
         };
 
         // 4. Spring ejecutará esa lambda en un hilo separado, escribiendo directo a la respuesta

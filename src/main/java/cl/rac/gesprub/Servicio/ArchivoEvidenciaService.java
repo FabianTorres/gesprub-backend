@@ -15,8 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional; 
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -208,6 +207,175 @@ public class ArchivoEvidenciaService {
             zos.finish(); // Finalizamos el ZIP correctamente
         } catch (IOException e) {
             throw new RuntimeException("Error al generar el flujo ZIP", e);
+        }
+    }
+    
+    /**
+     * Método principal que decide la estrategia (Caso A o Caso B).
+     */
+    @Transactional(readOnly = true)
+    public void generarZipStreamInteligente(Long idComponente, Integer idEstadoModificacion, Long limiteBytes, OutputStream outputStream) {
+        // 1. Obtener los archivos a descargar
+        List<Caso> casos = casoRepository.findByComponenteAndEstadoModificacionOpcional(
+                idComponente.intValue(), 
+                idEstadoModificacion
+        );
+        if (casos.isEmpty()) return;
+
+        List<Integer> idsCasos = casos.stream().map(c -> c.getId_caso().intValue()).collect(Collectors.toList());
+        List<Evidencia> evidencias = evidenciaRepository.findByIdCasoIn(idsCasos);
+        
+        // Aplanamos la lista de archivos para trabajar más fácil
+        List<ArchivoEvidencia> todosLosArchivos = evidencias.stream()
+            .flatMap(evi -> archivoEvidenciaRepository.findByEvidenciaId(evi.getId_evidencia()).stream())
+            .collect(Collectors.toList());
+
+        if (todosLosArchivos.isEmpty()) return;
+
+        // 2. Calcular peso total estimado
+        // NOTA: Esto hace llamadas a Azure para obtener metadata. Si es muy lento, 
+        // considera guardar el tamaño del archivo en la BD al momento de subirlo.
+        long pesoTotal = 0;
+        Map<Long, Long> mapaTamanos = new HashMap<>(); // Cache para no pedirlo dos veces
+        
+        for (ArchivoEvidencia archivo : todosLosArchivos) {
+            try {
+                // Obtenemos solo el tamaño sin descargar el contenido
+                long tamano = azureStorageService.getFileSize(CONTAINER_NAME, archivo.getRuta_archivo());
+                mapaTamanos.put(archivo.getId_archivo(), tamano);
+                pesoTotal += tamano;
+            } catch (Exception e) {
+                // Si falla obtener tamaño, asumimos un valor seguro o 0
+                mapaTamanos.put(archivo.getId_archivo(), 0L);
+            }
+        }
+
+        // 3. Decidir estrategia
+        try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+            // Mapa auxiliar para nombres de casos (usado en ambas estrategias)
+            Map<Long, String> nombresCasos = casos.stream().collect(Collectors.toMap(Caso::getId_caso, Caso::getNombre_caso));
+
+            if (pesoTotal <= limiteBytes) {
+                // CASO A: Comportamiento original (Plano)
+                generarZipPlano(todosLosArchivos, nombresCasos, zos);
+            } else {
+                // CASO B: Agrupación por Lotes (Nested ZIPs)
+                generarZipPorLotes(todosLosArchivos, nombresCasos, mapaTamanos, limiteBytes, zos);
+            }
+            
+            zos.finish();
+        } catch (IOException e) {
+            throw new RuntimeException("Error al generar el ZIP", e);
+        }
+    }
+    
+    
+ // --- Lógica del CASO A (Tu código original refactorizado) ---
+    private void generarZipPlano(List<ArchivoEvidencia> archivos, Map<Long, String> nombresCasos, ZipOutputStream zos) throws IOException {
+        Map<String, Integer> nombresUsados = new HashMap<>();
+        
+        for (ArchivoEvidencia archivo : archivos) {
+            agregarArchivoAlZip(archivo, nombresCasos, nombresUsados, zos);
+        }
+    }
+
+    // --- Lógica del CASO B (Lotes) ---
+    private void generarZipPorLotes(List<ArchivoEvidencia> archivos, Map<Long, String> nombresCasos, 
+                                    Map<Long, Long> mapaTamanos, Long limiteBytes, ZipOutputStream masterZos) throws IOException {
+        
+        int numeroLote = 1;
+        long tamanoActualLote = 0;
+        
+        // Iniciamos el primer lote
+        ZipOutputStream loteZos = iniciarNuevoLote(masterZos, numeroLote);
+        Map<String, Integer> nombresUsadosEnLote = new HashMap<>();
+
+        for (ArchivoEvidencia archivo : archivos) {
+            Long tamanoArchivo = mapaTamanos.getOrDefault(archivo.getId_archivo(), 0L);
+
+            // Verificar si cabe en el lote actual
+            // (Si el lote está vacío, metemos el archivo aunque sea gigante para no romper el loop)
+            if (tamanoActualLote > 0 && (tamanoActualLote + tamanoArchivo) > limiteBytes) {
+                // Cerramos lote actual
+                loteZos.finish(); // Importante: Finish, no close, porque usamos ShieldedOutputStream
+                masterZos.closeEntry(); // Cerramos la entrada del lote en el master
+
+                // Abrimos siguiente lote
+                numeroLote++;
+                loteZos = iniciarNuevoLote(masterZos, numeroLote);
+                tamanoActualLote = 0;
+                nombresUsadosEnLote.clear();
+            }
+
+            // Agregamos al lote actual
+            agregarArchivoAlZip(archivo, nombresCasos, nombresUsadosEnLote, loteZos);
+            tamanoActualLote += tamanoArchivo;
+        }
+
+        // Cerrar el último lote pendiente
+        loteZos.finish();
+        masterZos.closeEntry();
+    }
+
+    // --- Helper para crear la entrada del sub-zip ---
+    private ZipOutputStream iniciarNuevoLote(ZipOutputStream masterZos, int numero) throws IOException {
+        String nombreLote = "Lote_" + numero + ".zip";
+        ZipEntry loteEntry = new ZipEntry(nombreLote);
+        masterZos.putNextEntry(loteEntry);
+        
+        // TRUCO VITAL: ShieldedOutputStream evita que al cerrar el zip interno se cierre el master
+        return new ZipOutputStream(new ShieldedOutputStream(masterZos));
+    }
+
+    // --- Helper común para meter 1 archivo (Reutiliza tu lógica de nombres) ---
+    private void agregarArchivoAlZip(ArchivoEvidencia archivo, Map<Long, String> nombresCasos, 
+                                     Map<String, Integer> nombresUsados, ZipOutputStream zos) {
+        try {
+            FileDownloadDTO descarga = azureStorageService.downloadFile(CONTAINER_NAME, archivo.getRuta_archivo(), archivo.getNombre_archivo());
+            
+            String nombreCaso = nombresCasos.get((long) archivo.getEvidencia().getIdCaso()).replaceAll("[^a-zA-Z0-9.\\-]", "_");
+            String nombreArchivo = archivo.getNombre_archivo();
+            String rutaZip = nombreCaso + "/" + nombreArchivo;
+
+            // Manejo de duplicados (Tu lógica exacta)
+            if (nombresUsados.containsKey(rutaZip)) {
+                int count = nombresUsados.get(rutaZip) + 1;
+                nombresUsados.put(rutaZip, count);
+                int dotIndex = nombreArchivo.lastIndexOf(".");
+                if (dotIndex > 0) {
+                    nombreArchivo = nombreArchivo.substring(0, dotIndex) + "(" + count + ")" + nombreArchivo.substring(dotIndex);
+                } else {
+                    nombreArchivo = nombreArchivo + "(" + count + ")";
+                }
+                rutaZip = nombreCaso + "/" + nombreArchivo;
+            } else {
+                nombresUsados.put(rutaZip, 0);
+            }
+
+            ZipEntry entry = new ZipEntry(rutaZip);
+            zos.putNextEntry(entry);
+            try (InputStream is = descarga.getDataStream()) {
+                is.transferTo(zos);
+            }
+            zos.closeEntry();
+
+        } catch (Exception e) {
+            System.err.println("Error al agregar archivo " + archivo.getId_archivo() + ": " + e.getMessage());
+        }
+    }
+
+    // --- CLASE INTERNA VITAL PARA ZIP ANIDADOS ---
+    // Esta clase actúa como un escudo. Cuando el ZipOutputStream interno llama a close(),
+    // este escudo lo intercepta y NO cierra el stream real (el del Zip Maestro).
+    private static class ShieldedOutputStream extends FilterOutputStream {
+        public ShieldedOutputStream(OutputStream out) {
+            super(out);
+        }
+
+        @Override
+        public void close() throws IOException {
+            // No hacemos nada intencionalmente para no cerrar el stream padre
+            // El stream padre se encargará de hacer flush/close cuando toque.
         }
     }
 }

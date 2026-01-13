@@ -28,7 +28,7 @@ public class CatVectorEntity {
     @Column(nullable = false)
     private Integer periodo;
 
-    @Column(name = "NOMBRE")
+    @Column(name = "NOMBRE", length = 255)
     private String nombre;
 
     @Column(name = "TIPO_TECNOLOGIA")
