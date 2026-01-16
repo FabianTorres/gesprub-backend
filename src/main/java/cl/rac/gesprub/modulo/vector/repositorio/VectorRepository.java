@@ -6,13 +6,15 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
     
     // Metodo para validar duplicados (RUT + PERIODO + VECTOR)
-    boolean existsByRutAndPeriodoAndVector(Long rut, Integer periodo, Integer vector);
+	boolean existsByRutAndPeriodoAndVector(Long rut, Integer periodo, Integer vector);
     
     /**
      * Trae solo los registros cuyo vector en el catalogo sea 'BATCH'
@@ -28,4 +30,26 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
     List<VectorEntity> findAllBigDataVectors();
     
     List<VectorEntity> findByPeriodo(Integer periodo);
+    
+    
+   
+ // 1. Para el archivo BigData (TXT):
+    // CORREGIDO: Usamos 'v.periodo' y 'v.vector' en lugar de los nombres de columna
+    @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo " +
+           "AND (v.vector <> 599 OR (v.vector = 599 AND (v.intencionCarga IS NULL OR v.intencionCarga = 'INSERT')))")
+    List<VectorEntity> findForBigDataExport(@Param("periodo") Integer periodo);
+
+    // 2. Para el reporte de modificaciones (Excel/CSV):
+    // CORREGIDO: Usamos 'v.periodo' y 'v.vector'
+    @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo " +
+           "AND v.vector = 599 AND v.intencionCarga = 'UPDATE' AND (v.procesado IS NULL OR v.procesado = false)")
+    List<VectorEntity> findModificacionesPendientes(@Param("periodo") Integer periodo);
+
+    // 3. Modificación masiva para marcar como enviados
+    // CORREGIDO: Usamos 'v.periodo' y 'v.vector'
+    @Modifying
+    @Query("UPDATE VectorEntity v SET v.procesado = true WHERE v.periodo = :periodo AND v.vector = 599 AND v.intencionCarga = 'UPDATE'")
+    void marcarModificacionesComoProcesadas(@Param("periodo") Integer periodo);
+    
+    
 }

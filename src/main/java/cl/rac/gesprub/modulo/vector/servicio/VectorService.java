@@ -20,6 +20,8 @@ import cl.rac.gesprub.modulo.vector.repositorio.CatVectorRepository;
 import cl.rac.gesprub.modulo.vector.repositorio.CatVersionRepository;
 import cl.rac.gesprub.modulo.vector.repositorio.VectorLogRepository;
 import cl.rac.gesprub.modulo.vector.repositorio.VectorRepository;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -188,6 +190,12 @@ public class VectorService {
     @Transactional
     public VectorDTO guardar(VectorDTO dto) {
     	
+    	if (vectorRepository.existsByRutAndPeriodoAndVector(dto.getRut(), dto.getPeriodo(), dto.getVector())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, 
+                String.format("Registro duplicado: Ya existe un vector %d para el RUT %d en el periodo %d", 
+                dto.getVector(), dto.getRut(), dto.getPeriodo()));
+        }
+    	
     	CatVectorEntity catEntry = catVectorRepository.findByVectorIdAndPeriodo(dto.getVector(), dto.getPeriodo());
         
     	if (catEntry == null) {
@@ -243,7 +251,14 @@ public class VectorService {
         entity.setRut2(dto.getRut2());
         entity.setDv2(dto.getDv2());
         
+        if (dto.getIntencionCarga() != null) {
+            entity.setIntencionCarga(dto.getIntencionCarga());
+        }
+        entity.setProcesado(false);
+        
         entity.setUsuarioModificacion(usuario);
+        
+        
         
         
         VectorEntity actualizado = vectorRepository.save(entity);
@@ -302,9 +317,9 @@ public class VectorService {
     }
     
     // Generar TXT (solo bigdata)
-    public ByteArrayInputStream generarArchivoTxt() {
+    public ByteArrayInputStream generarArchivoTxtBigData(Integer periodo) {
         // Usamos la query filtrada del repositorio
-        List<VectorEntity> vectores = vectorRepository.findAllBigDataVectors();
+        List<VectorEntity> vectores = vectorRepository.findForBigDataExport(periodo);
         StringBuilder txtBuilder = new StringBuilder();
         
         // Formato fecha actual para la última columna: TIMESTAMP
@@ -332,6 +347,33 @@ public class VectorService {
         return new ByteArrayInputStream(txtBuilder.toString().getBytes(StandardCharsets.UTF_8));
     }
     
+    // Generar CSV de Modificaciones 599 
+    public ByteArrayInputStream generarReporteModificaciones599(Integer periodo) {
+        List<VectorEntity> modificaciones = vectorRepository.findModificacionesPendientes(periodo);
+        
+        StringBuilder sb = new StringBuilder();
+        // Cabecera CSV
+        sb.append("RUT;DV;VECTOR;VALOR;INTENCION\n");
+        
+        for (VectorEntity v : modificaciones) {
+            sb.append(v.getRut()).append(";")  
+              .append(v.getDv()).append(";")     
+              .append(v.getPeriodo()).append(";")   
+              .append(v.getVector()).append(";")    
+              .append(v.getValor()).append(";")     
+              .append(v.getIntencionCarga()).append("\\n");
+        
+        }
+        
+        return new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    // --- NUEVO: Marcar como Enviados ---
+    @Transactional
+    public void marcarModificacionesComoEnviadas(Integer periodo) {
+        vectorRepository.marcarModificacionesComoProcesadas(periodo);
+    }
+    
     /**
      * Para que el Frontend pregunte antes de intentar guardar
      * Retorna TRUE si ya existe la combinacion Rut + Periodo + Vector
@@ -352,6 +394,8 @@ public class VectorService {
         dto.setElvc_seq(e.getElvcSeq());
         dto.setRut2(e.getRut2());
         dto.setDv2(e.getDv2());
+        dto.setIntencionCarga(e.getIntencionCarga());
+        dto.setProcesado(e.getProcesado());
         dto.setUsuarioModificacion(e.getUsuarioModificacion());
         dto.setFechaModificacion(e.getFechaModificacion());
         return dto;
@@ -367,6 +411,9 @@ public class VectorService {
         e.setElvcSeq(d.getElvc_seq());
         e.setRut2(d.getRut2());
         e.setDv2(d.getDv2());
+        e.setIntencionCarga(d.getIntencionCarga() != null ? d.getIntencionCarga() : "INSERT");
+        // Al crear, siempre nace como NO procesado
+        e.setProcesado(false);
         return e;
     }
     

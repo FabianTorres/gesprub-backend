@@ -66,18 +66,37 @@ public class VectorController {
     
     
     @GetMapping("/descargar-txt")
-    public ResponseEntity<InputStreamResource> descargarTxt() {
-        ByteArrayInputStream stream = vectorService.generarArchivoTxt();
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm"));
-        String nombreArchivo = "vectores_bigdata_" + timestamp + ".txt";
-
+    public ResponseEntity<InputStreamResource> descargarTxt(@RequestParam Integer periodo) {
+        ByteArrayInputStream stream = vectorService.generarArchivoTxtBigData(periodo);
+        
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "attachment; filename=" + nombreArchivo);
+        headers.add("Content-Disposition", "attachment; filename=Vectores_BigData_" + periodo + ".txt");
 
         return ResponseEntity.ok()
                 .headers(headers)
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(new InputStreamResource(stream));
+    }
+    
+ // 4. NUEVO: Descargar Modificaciones 599
+    @GetMapping("/descargar-modif-599")
+    public ResponseEntity<InputStreamResource> descargarModif599(@RequestParam Integer periodo) {
+        ByteArrayInputStream stream = vectorService.generarReporteModificaciones599(periodo);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=Modificaciones_599_" + periodo + ".csv");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("text/csv; charset=utf-8"))
+                .body(new InputStreamResource(stream));
+    }
+
+    // 5. NUEVO: Marcar como Enviados
+    @PostMapping("/marcar-enviados-599")
+    public ResponseEntity<String> marcarEnviados599(@RequestParam Integer periodo) {
+        vectorService.marcarModificacionesComoEnviadas(periodo);
+        return ResponseEntity.ok("Registros de modificación Vector 599 marcados como procesados para el periodo " + periodo);
     }
     
     /**

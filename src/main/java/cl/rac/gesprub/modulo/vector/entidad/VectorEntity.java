@@ -46,9 +46,21 @@ public class VectorEntity {
     @Column(name = "FECHA_MODIFICACION")
     private LocalDateTime fechaModificacion;
     
+    @Column(name = "INTENCION_CARGA")
+    private String intencionCarga = "INSERT"; // Default Java
+
+    @Column(name = "PROCESADO")
+    private Boolean procesado = false;
+    
     @PrePersist
     @PreUpdate
     public void prePersist() {
         this.fechaModificacion = LocalDateTime.now();
     }
+    
+    public String getIntencionCarga() { return intencionCarga; }
+    public void setIntencionCarga(String intencionCarga) { this.intencionCarga = intencionCarga; }
+
+    public Boolean getProcesado() { return procesado; }
+    public void setProcesado(Boolean procesado) { this.procesado = procesado; }
 }

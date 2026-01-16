@@ -21,4 +21,14 @@ public class VectorDTO {
     
     private String usuarioModificacion;
     private LocalDateTime fechaModificacion;
+    
+    private String intencionCarga; // "INSERT" o "UPDATE"
+    private Boolean procesado;
+    
+    
+    public String getIntencionCarga() { return intencionCarga; }
+    public void setIntencionCarga(String intencionCarga) { this.intencionCarga = intencionCarga; }
+    
+    public Boolean getProcesado() { return procesado; }
+    public void setProcesado(Boolean procesado) { this.procesado = procesado; }
 }
