@@ -128,9 +128,9 @@ public class VectorService {
             entity.setVectorId(vDto.getVectorId());
             entity.setNombre(vDto.getNombre());
             entity.setTipoTecnologia(vDto.getTipoTecnologia());
-            entity.setPeriodo(version.getPeriodo()); // El periodo lo dicta la versión
+            entity.setPeriodo(version.getPeriodo()); 
             entity.setEstado(true);
-            entity.setVersionIngreso(version); // Link a la versión
+            entity.setVersionIngreso(version); 
             
             catVectorRepository.save(entity);
         }
@@ -190,6 +190,13 @@ public class VectorService {
     @Transactional
     public VectorDTO guardar(VectorDTO dto) {
     	
+    	if (dto.getDv() != null) {
+            dto.setDv(dto.getDv().toUpperCase());
+        }
+        if (dto.getDv2() != null) {
+            dto.setDv2(dto.getDv2().toUpperCase());
+        }
+    	
     	if (vectorRepository.existsByRutAndPeriodoAndVector(dto.getRut(), dto.getPeriodo(), dto.getVector())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, 
                 String.format("Registro duplicado: Ya existe un vector %d para el RUT %d en el periodo %d", 
@@ -231,6 +238,13 @@ public class VectorService {
     @Transactional
     public VectorDTO actualizar(Long id, VectorDTO dto) {
     	
+    	if (dto.getDv() != null) {
+            dto.setDv(dto.getDv().toUpperCase());
+        }
+        if (dto.getDv2() != null) {
+            dto.setDv2(dto.getDv2().toUpperCase());
+        }
+    	
     	CatVectorEntity catEntry = catVectorRepository.findByVectorIdAndPeriodo(dto.getVector(), dto.getPeriodo());
         if (catEntry == null) {
              throw new RuntimeException("Error: El vector " + dto.getVector() + " no está catalogado para el periodo " + dto.getPeriodo());
@@ -257,10 +271,7 @@ public class VectorService {
         entity.setProcesado(false);
         
         entity.setUsuarioModificacion(usuario);
-        
-        
-        
-        
+         
         VectorEntity actualizado = vectorRepository.save(entity);
         
         VectorLogEntity log = new VectorLogEntity(actualizado, "MODIFICACION", usuario);
@@ -292,15 +303,17 @@ public class VectorService {
         StringBuilder sqlBuilder = new StringBuilder();
 
         for (VectorEntity v : vectores) {
+        	
+        	String dvNormalizado = (v.getDv() != null) ? v.getDv().toUpperCase() : "K";
             // Formatear NULLs correctamente para SQL (sin comillas)
             String valRut2 = (v.getRut2() != null) ? String.valueOf(v.getRut2()) : "null";
-            String valDv2 = (v.getDv2() != null) ? "'" + v.getDv2() + "'" : "null";
+            String valDv2 = (v.getDv2() != null) ? "'" + v.getDv2().toUpperCase() + "'" : "null";
 
             // Construir la linea INSERT exacta solicitada
             String linea = String.format(
                 "insert into TR_RESUMEN_TRANS_2010 (CNTR_RUT,CNTR_DV,PERIODO_DJ,VALOR_TRANSFERENCIA,TRRT_KEYB,ELVC_SEQ,CNTR_RUT2,CNTR_DV2) Values (%d,'%s',%d,%d,%d,'%s',%s,%s);\n",
                 v.getRut(),
-                v.getDv(),
+                dvNormalizado,
                 v.getPeriodo(),
                 v.getValor(),
                 v.getVector(), // TRRT_KEYB
@@ -326,13 +339,14 @@ public class VectorService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SS"));
 
         for (VectorEntity v : vectores) {
+        	String dvNormalizado = (v.getDv() != null) ? v.getDv().toUpperCase() : "";
             String valRut2 = (v.getRut2() != null) ? String.valueOf(v.getRut2()) : ""; // En TXT pipe suele ir vacio, no 'null' string
-            String valDv2 = (v.getDv2() != null) ? v.getDv2() : "";
+            String valDv2 = (v.getDv2() != null) ? v.getDv2().toUpperCase() : "";
 
             // Formato: RUT|DV|PERIODO|VECTOR|VALOR|ELVC_SEQ|RUT2|DV2|1.0|TIMESTAMP
             String linea = String.format("%d|%s|%d|%d|%d|%s|%s|%s|1.0|%s\n",
                 v.getRut(),
-                v.getDv(),
+                dvNormalizado,
                 v.getPeriodo(),
                 v.getVector(),
                 v.getValor(),
@@ -356,8 +370,10 @@ public class VectorService {
         sb.append("RUT;DV;VECTOR;VALOR;INTENCION\n");
         
         for (VectorEntity v : modificaciones) {
+        	
+        	String dvNormalizado = (v.getDv() != null) ? v.getDv().toUpperCase() : "";
             sb.append(v.getRut()).append(";")  
-              .append(v.getDv()).append(";")     
+              .append(dvNormalizado).append(";")     
               .append(v.getPeriodo()).append(";")   
               .append(v.getVector()).append(";")    
               .append(v.getValor()).append(";")     
@@ -368,7 +384,7 @@ public class VectorService {
         return new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    // --- NUEVO: Marcar como Enviados ---
+    // Marcar como Enviados 
     @Transactional
     public void marcarModificacionesComoEnviadas(Integer periodo) {
         vectorRepository.marcarModificacionesComoProcesadas(periodo);
