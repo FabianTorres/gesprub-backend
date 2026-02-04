@@ -51,8 +51,8 @@ public class VectorController {
     }
 
     @GetMapping("/descargar-sql")
-    public ResponseEntity<InputStreamResource> descargarSql() {
-        ByteArrayInputStream stream = vectorService.generarArchivoSql();
+    public ResponseEntity<InputStreamResource> descargarSql(@RequestParam Integer periodo) {
+    	ByteArrayInputStream stream = vectorService.generarArchivoSql(periodo);
         String nombreArchivo = "inserta_vx_2026_pp_rac.sql";
 
         HttpHeaders headers = new HttpHeaders();

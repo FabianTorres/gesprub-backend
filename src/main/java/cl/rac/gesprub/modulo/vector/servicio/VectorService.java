@@ -298,8 +298,8 @@ public class VectorService {
     /**
      * Genera el contenido del archivo .sql
      */
-    public ByteArrayInputStream generarArchivoSql() {
-    	List<VectorEntity> vectores = vectorRepository.findAllBatchVectors();
+    public ByteArrayInputStream generarArchivoSql(Integer periodo) {
+    	List<VectorEntity> vectores = vectorRepository.findForBatchExport(periodo);
         StringBuilder sqlBuilder = new StringBuilder();
 
         for (VectorEntity v : vectores) {

@@ -17,11 +17,12 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
 	boolean existsByRutAndPeriodoAndVector(Long rut, Integer periodo, Integer vector);
     
     /**
+     * RIESGOSO, SE ELIMINA
      * Trae solo los registros cuyo vector en el catalogo sea 'BATCH'
      * Hacemos un JOIN implicito (o cartesiano filtrado) entre la tabla de datos y el catálogo.
      */
-    @Query("SELECT v FROM VectorEntity v, CatVectorEntity c WHERE v.vector = c.vectorId AND c.tipoTecnologia = 'BATCH'")
-    List<VectorEntity> findAllBatchVectors();
+//    @Query("SELECT v FROM VectorEntity v, CatVectorEntity c WHERE v.vector = c.vectorId AND c.tipoTecnologia = 'BATCH'")
+//    List<VectorEntity> findAllBatchVectors();
 
     /**	
      * Trae solo los registros cuyo vector en el catalogo sea 'BIGDATA_INTEGRADO'
@@ -39,6 +40,11 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
            "AND v.elvcSeq = 'BD_RAC' " + 
            "AND (v.vector <> 599 OR (v.vector = 599 AND (v.intencionCarga IS NULL OR v.intencionCarga = 'INSERT')))")
     List<VectorEntity> findForBigDataExport(@Param("periodo") Integer periodo);
+    
+	 // AHORA (Correcto y Seguro):
+	 // Buscamos por periodo y aseguramos que NO sea BigData (o explícitamente NOMCES)
+	 @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo AND (v.elvcSeq IS NULL OR v.elvcSeq = 'NOMCES')")
+	 List<VectorEntity> findForBatchExport(@Param("periodo") Integer periodo);
 
     // 2. Para el reporte de modificaciones (Excel/CSV):
     // Usamos 'v.periodo' y 'v.vector'
