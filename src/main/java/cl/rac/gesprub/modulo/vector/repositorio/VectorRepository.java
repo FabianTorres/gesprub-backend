@@ -23,7 +23,7 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
     @Query("SELECT v FROM VectorEntity v, CatVectorEntity c WHERE v.vector = c.vectorId AND c.tipoTecnologia = 'BATCH'")
     List<VectorEntity> findAllBatchVectors();
 
-    /**
+    /**	
      * Trae solo los registros cuyo vector en el catalogo sea 'BIGDATA_INTEGRADO'
      */
     @Query("SELECT v FROM VectorEntity v, CatVectorEntity c WHERE v.vector = c.vectorId AND c.tipoTecnologia = 'BIGDATA_INTEGRADO'")
@@ -33,20 +33,21 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
     
     
    
- // 1. Para el archivo BigData (TXT):
-    // CORREGIDO: Usamos 'v.periodo' y 'v.vector' en lugar de los nombres de columna
+    // 1. Para el archivo BigData (TXT):
+    // Se agrega filtro 'AND v.elvcSeq = 'BD_RAC'' para asegurar que solo bajamos BigData Integrado.
     @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo " +
+           "AND v.elvcSeq = 'BD_RAC' " + 
            "AND (v.vector <> 599 OR (v.vector = 599 AND (v.intencionCarga IS NULL OR v.intencionCarga = 'INSERT')))")
     List<VectorEntity> findForBigDataExport(@Param("periodo") Integer periodo);
 
     // 2. Para el reporte de modificaciones (Excel/CSV):
-    // CORREGIDO: Usamos 'v.periodo' y 'v.vector'
+    // Usamos 'v.periodo' y 'v.vector'
     @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo " +
            "AND v.vector = 599 AND v.intencionCarga = 'UPDATE' AND (v.procesado IS NULL OR v.procesado = false)")
     List<VectorEntity> findModificacionesPendientes(@Param("periodo") Integer periodo);
 
     // 3. Modificación masiva para marcar como enviados
-    // CORREGIDO: Usamos 'v.periodo' y 'v.vector'
+    // Usamos 'v.periodo' y 'v.vector'
     @Modifying
     @Query("UPDATE VectorEntity v SET v.procesado = true WHERE v.periodo = :periodo AND v.vector = 599 AND v.intencionCarga = 'UPDATE'")
     void marcarModificacionesComoProcesadas(@Param("periodo") Integer periodo);
