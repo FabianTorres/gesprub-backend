@@ -32,19 +32,33 @@ public interface VectorRepository extends JpaRepository<VectorEntity, Long> {
     
     List<VectorEntity> findByPeriodo(Integer periodo);
     
-    
    
-    // 1. Para el archivo BigData (TXT):
-    // Se agrega filtro 'AND v.elvcSeq = 'BD_RAC'' para asegurar que solo bajamos BigData Integrado.
-    @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo " +
-           "AND v.elvcSeq = 'BD_RAC' " + 
+    /**
+     * EXPORTACIÓN BIGDATA (TXT) - "CATALOG DRIVEN"
+     * Lógica:
+     * 1. Ignoramos la etiqueta del dato.
+     * 2. Exigimos que el catálogo diga 'BIGDATA_INTEGRADO'.
+     * Resultado: El vector 253 saldrá aquí SIEMPRE, incluso el registro que dice 'NOMCES'.
+     */
+    @Query("SELECT v FROM VectorEntity v " +
+           "JOIN CatVectorEntity c ON v.vector = c.vectorId AND v.periodo = c.periodo " +
+           "WHERE v.periodo = :periodo " +
+           "AND c.tipoTecnologia = 'BIGDATA_INTEGRADO' " +
            "AND (v.vector <> 599 OR (v.vector = 599 AND (v.intencionCarga IS NULL OR v.intencionCarga = 'INSERT')))")
     List<VectorEntity> findForBigDataExport(@Param("periodo") Integer periodo);
     
-	 // AHORA (Correcto y Seguro):
-	 // Buscamos por periodo y aseguramos que NO sea BigData (o explícitamente NOMCES)
-	 @Query("SELECT v FROM VectorEntity v WHERE v.periodo = :periodo AND (v.elvcSeq IS NULL OR v.elvcSeq = 'NOMCES')")
-	 List<VectorEntity> findForBatchExport(@Param("periodo") Integer periodo);
+    /**
+     * EXPORTACIÓN BATCH (SQL) - "CATALOG DRIVEN"
+     * Lógica: 
+     * 1. No miramos v.elvcSeq (ignoramos si dice NOMCES o BD_RAC).
+     * 2. Exigimos que la definición en CAT_VECTORES para ese periodo sea 'BATCH'.
+     * Resultado: El vector 253 (que es BigData en catálogo) NUNCA saldrá aquí.
+     */
+    @Query("SELECT v FROM VectorEntity v " +
+           "JOIN CatVectorEntity c ON v.vector = c.vectorId AND v.periodo = c.periodo " +
+           "WHERE v.periodo = :periodo " +
+           "AND c.tipoTecnologia = 'BATCH'")
+    List<VectorEntity> findForBatchExport(@Param("periodo") Integer periodo);
 
     // 2. Para el reporte de modificaciones (Excel/CSV):
     // Usamos 'v.periodo' y 'v.vector'
