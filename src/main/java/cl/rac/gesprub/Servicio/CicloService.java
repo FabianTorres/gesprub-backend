@@ -101,8 +101,12 @@ public class CicloService {
         dto.setTotalCasosAsignados((int) totalAsignados);
 
         // B. Distribución de Estados (Ejecución)
-        // Obtenemos la lista cruda: [["OK", 5], ["NK", 2]]
-        List<Object[]> resultados = evidenciaRepository.countEstadosUltimaEvidenciaPorCiclo(idCiclo);
+        // ANTES
+        //List<Object[]> resultados = evidenciaRepository.countEstadosUltimaEvidenciaPorCiclo(idCiclo);
+        
+        // AHORA (Usamos el nuevo método validado):
+        List<Object[]> resultados = evidenciaRepository.countEstadosEvidenciaValidadaPorCiclo(idCiclo);
+        
         
         int certificados = 0;
         int errores = 0;
