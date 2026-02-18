@@ -11,6 +11,7 @@ import cl.rac.gesprub.modulo.vector.servicio.VectorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import java.io.ByteArrayInputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/vectores")
@@ -203,5 +206,29 @@ public class VectorController {
             @RequestParam Integer periodoDestino) {
         vectorService.ejecutarRollover(periodoOrigen, periodoDestino);
         return ResponseEntity.ok("Rollover completado exitosamente de " + periodoOrigen + " a " + periodoDestino);
+    }
+    
+    
+    /**
+     * Endpoint para carga masiva de vectores.
+     * Transaccional: Si uno falla, fallan todos.
+     */
+    @PostMapping("/importar-masivo")
+    public ResponseEntity<Map<String, Object>> importarMasivo(@RequestBody List<VectorDTO> listaVectores) {
+        try {
+            Map<String, Object> resultado = vectorService.cargaMasivaTransaccional(listaVectores);
+            return ResponseEntity.ok(resultado);
+        } catch (RuntimeException e) {
+            
+            // Capturamos la excepción de negocio (Duplicado, Catálogo no existe, etc)
+            // para devolver un JSON limpio indicando que falló todo el lote.
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("procesados", 0); 
+            errorResponse.put("errores", listaVectores.size());
+            errorResponse.put("mensaje", e.getMessage());
+            
+            // Retornamos 409 Conflict o 400 Bad Request según prefieras, aquí uso 409.
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        }
     }
 }

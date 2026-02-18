@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -556,5 +558,41 @@ public class VectorService {
             // ... O lanzamos error (comportamiento estricto antiguo)
             throw new RuntimeException("Error: La versión normativa '" + codigoVersion + "' no existe para el periodo " + periodo);
         }
+    }
+    
+    
+    /**
+     * Carga Masiva Transaccional (Todo o Nada).
+     * Itera sobre la lista y llama a guardar() individualmente.
+     * Si guardar() lanza CUALQUIER excepción, la transacción completa hace Rollback.
+     */
+    @Transactional
+    public Map<String, Object> cargaMasivaTransaccional(List<VectorDTO> listaVectores) {
+        // Validacion básica de entrada
+        if (listaVectores == null || listaVectores.isEmpty()) {
+            throw new IllegalArgumentException("La lista de vectores no puede estar vacía");
+        }
+
+        int procesados = 0;
+
+        for (VectorDTO dto : listaVectores) {
+            // Reutilizamos la lógica centralizada de guardar.
+            // Esto asegura que se aplique:
+            // 1. Normalización DV -> 'K'
+            // 2. Validación de duplicados (Lanza Excepción si existe)
+            // 3. Validación contra Catálogo (Lanza Excepción si no existe o está inactivo)
+            // 4. Asignación correcta de ELVC_SEQ (BD_RAC vs NOMCES)
+            // 5. Creación del Log
+            this.guardar(dto); 
+            procesados++;
+        }
+
+        // Si llegamos aquí, es que todo salió bien. Preparamos la respuesta.
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("procesados", procesados);
+        respuesta.put("errores", 0); // Si hubiera error, se habría lanzado excepción y no llegaríamos aquí
+        respuesta.put("mensaje", "Carga exitosa de " + procesados + " vectores.");
+        
+        return respuesta;
     }
 }
