@@ -576,13 +576,12 @@ public class VectorService {
         int procesados = 0;
 
         for (VectorDTO dto : listaVectores) {
-            // Reutilizamos la lógica centralizada de guardar.
-            // Esto asegura que se aplique:
-            // 1. Normalización DV -> 'K'
-            // 2. Validación de duplicados (Lanza Excepción si existe)
-            // 3. Validación contra Catálogo (Lanza Excepción si no existe o está inactivo)
-            // 4. Asignación correcta de ELVC_SEQ (BD_RAC vs NOMCES)
-            // 5. Creación del Log
+        	if (dto.getValor() == null) {
+                throw new IllegalArgumentException(String.format(
+                    "Error de validación: El vector %d para el RUT %d no tiene un 'valor' asignado.", 
+                    dto.getVector(), dto.getRut()
+                ));
+            }
             this.guardar(dto); 
             procesados++;
         }

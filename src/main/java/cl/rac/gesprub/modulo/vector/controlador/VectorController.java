@@ -225,7 +225,23 @@ public class VectorController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("procesados", 0); 
             errorResponse.put("errores", listaVectores.size());
-            errorResponse.put("mensaje", e.getMessage());
+            
+            String mensajeUsuario;
+
+            if (e instanceof IllegalArgumentException) {
+                // Errores de validación manual (como el del null que agregamos arriba)
+                mensajeUsuario = e.getMessage();
+            } else if (e instanceof org.springframework.dao.DataIntegrityViolationException) {
+                // Errores de Base de Datos (SQL constraints, Nulls no controlados, etc.)
+                // En vez del SQL gigante, mostramos algo genérico pero útil.
+                mensajeUsuario = "Error de integridad de datos: Verifique que no falten campos obligatorios (como el Valor) y que los datos sean correctos.";
+            } else {
+                // Otros errores inesperados
+                mensajeUsuario = "Error inesperado al procesar el lote: " + e.getMessage();
+            }
+            
+            
+            errorResponse.put("mensaje", mensajeUsuario);
             
             // Retornamos 409 Conflict o 400 Bad Request según prefieras, aquí uso 409.
             return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
