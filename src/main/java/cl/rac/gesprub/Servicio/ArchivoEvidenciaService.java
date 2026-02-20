@@ -297,7 +297,7 @@ public class ArchivoEvidenciaService {
             // (Si el lote está vacío, metemos el archivo aunque sea gigante para no romper el loop)
             if (tamanoActualLote > 0 && (tamanoActualLote + tamanoArchivo) > limiteBytes) {
                 // Cerramos lote actual
-                loteZos.finish(); // Importante: Finish, no close, porque usamos ShieldedOutputStream
+            	loteZos.close(); // Importante: Finish, no close, porque usamos ShieldedOutputStream
                 masterZos.closeEntry(); // Cerramos la entrada del lote en el master
 
                 // Abrimos siguiente lote
@@ -313,7 +313,7 @@ public class ArchivoEvidenciaService {
         }
 
         // Cerrar el último lote pendiente
-        loteZos.finish();
+        loteZos.close();
         masterZos.closeEntry();
     }
 
@@ -376,6 +376,7 @@ public class ArchivoEvidenciaService {
         public void close() throws IOException {
             // No hacemos nada intencionalmente para no cerrar el stream padre
             // El stream padre se encargará de hacer flush/close cuando toque.
+        	out.flush();
         }
     }
 }
