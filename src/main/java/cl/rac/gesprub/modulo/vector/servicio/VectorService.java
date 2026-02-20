@@ -217,13 +217,13 @@ public class VectorService {
        }
     	
     	VectorEntity entity = mapToEntity(dto);
-    	if (entity.getElvcSeq() == null || entity.getElvcSeq().trim().isEmpty()) {
+    	
             if ("BIGDATA_INTEGRADO".equals(catEntry.getTipoTecnologia())) {
                 entity.setElvcSeq("BD_RAC");
             } else {
                 entity.setElvcSeq("NOMCES"); // Default Batch
             }
-        }
+        
         String usuario = dto.getUsuarioResponsable() != null ? dto.getUsuarioResponsable() : "SYSTEM";
         entity.setUsuarioModificacion(usuario);
         
