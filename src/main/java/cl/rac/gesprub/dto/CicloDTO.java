@@ -31,6 +31,7 @@ public class CicloDTO {
     private Integer totalCasosAsignados = 0;
     private Integer casosCertificados = 0; // Casos con última evidencia OK
     private Integer casosError = 0;      // Casos con última evidencia NK
+    private Integer casosNA;
     private Integer casosSinEjecutar = 0; // Casos sin evidencia o con evidencia antigua no OK/NK
     private List<String> componentesInvolucrados = new ArrayList<>();
 

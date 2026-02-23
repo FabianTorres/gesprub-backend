@@ -110,6 +110,7 @@ public class CicloService {
         
         int certificados = 0;
         int errores = 0;
+        int casosNA = 0;
 
         for (Object[] fila : resultados) {
             String estado = (String) fila[0];
@@ -120,18 +121,20 @@ public class CicloService {
                     certificados += cantidad.intValue();
                 } else if ("NK".equalsIgnoreCase(estado)) {
                     errores += cantidad.intValue();
-                }
-                // Otros estados se ignoran en estos contadores específicos
+	            } else if ("N/A".equalsIgnoreCase(estado) || "NA".equalsIgnoreCase(estado)) { 
+	                casosNA += cantidad.intValue();
+	            }
             }
         }
 
         dto.setCasosCertificados(certificados);
         dto.setCasosError(errores);
+        dto.setCasosNA(casosNA);
 
-        // C. Casos Sin Ejecutar (Fórmula solicitada)
-        // Total - (OK + NK). Cualquier otro estado o la ausencia de ejecución cae aquí.
-        int sinEjecutar = (int) totalAsignados - (certificados + errores);
-        // Aseguramos que no sea negativo (por si acaso hubiera inconsistencias de datos antiguos)
+        // C. Casos Sin Ejecutar 
+        // Total - (OK + NK + NA)
+        int sinEjecutar = (int) totalAsignados - (certificados + errores + casosNA);
+        // Aseguramos que no sea negativo 
         dto.setCasosSinEjecutar(Math.max(0, sinEjecutar));
         // D.  Componentes Involucrados
         List<String> componentes = cicloCasoRepository.findNombresComponentesPorCiclo(idCiclo);
