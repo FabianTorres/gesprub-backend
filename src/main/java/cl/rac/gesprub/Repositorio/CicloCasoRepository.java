@@ -59,4 +59,9 @@ public interface CicloCasoRepository extends JpaRepository<CicloCaso, Integer> {
         ORDER BY etiqueta ASC
     """, nativeQuery = true)
     List<String> findNombresComponentesPorCiclo(@Param("idCiclo") Integer idCiclo);
+    
+    // Para el Req 2: Borrar relacion con Ciclos
+    @Modifying
+    @Query("DELETE FROM CicloCaso cc WHERE cc.idCaso IN :idsCasos")
+    void eliminarPorIdsCaso(@Param("idsCasos") List<Long> idsCasos);
 }

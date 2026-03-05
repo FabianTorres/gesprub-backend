@@ -25,9 +25,11 @@ import cl.rac.gesprub.dto.AsignarCasoDTO;
 import cl.rac.gesprub.dto.CasoConEvidenciaDTO;
 import cl.rac.gesprub.dto.CasoDTO;
 import cl.rac.gesprub.dto.CasoVersionUpdateDTO;
+import cl.rac.gesprub.dto.EliminarCasosRequestDTO;
 import cl.rac.gesprub.dto.HistorialDTO;
 import cl.rac.gesprub.dto.KanbanDTO;
 import cl.rac.gesprub.dto.LoteExitoResponseDTO;
+import cl.rac.gesprub.dto.MoverCasosRequestDTO;
 import cl.rac.gesprub.dto.MuroDTO;
 import cl.rac.gesprub.dto.ProcesarLoteRequestDTO;
 import cl.rac.gesprub.Entidad.Fuente;
@@ -36,6 +38,8 @@ import cl.rac.gesprub.dto.FuenteDTO;
 import cl.rac.gesprub.dto.CasoImportDTO; 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/caso")
@@ -212,6 +216,24 @@ public class CasoController {
     @PostMapping("/procesar-lote")
     public LoteExitoResponseDTO procesarLote(@Valid @RequestBody ProcesarLoteRequestDTO lote) {
         return casoService.procesarLote(lote);
+    }
+    
+    @PatchMapping("/mover-masivo")
+    public ResponseEntity<Map<String, String>> moverCasosMasivo(@RequestBody MoverCasosRequestDTO dto) {
+        casoService.moverCasosMasivo(dto.getIdsCasos(), dto.getIdComponenteDestino());
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("mensaje", "Casos movidos exitosamente.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/eliminar-masivo")
+    public ResponseEntity<Map<String, String>> eliminarCasosMasivo(@RequestBody EliminarCasosRequestDTO dto) {
+        casoService.eliminarCasosMasivo(dto.getIdsCasos());
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("mensaje", "Casos y sus dependencias eliminados correctamente.");
+        return ResponseEntity.ok(response);
     }
 
 

@@ -3,6 +3,7 @@ package cl.rac.gesprub.Repositorio;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -96,5 +97,9 @@ public interface EvidenciaRepository extends JpaRepository<Evidencia, Long>{
 	    List<Object[]> countEstadosEvidenciaValidadaPorCiclo(@Param("idCiclo") Integer idCiclo);
 	    
 	    
+	    // Para el Req 2: Borrar Evidencias
+	    @Modifying
+	    @Query("DELETE FROM Evidencia e WHERE e.idCaso IN :idsCasos")
+	    void eliminarPorIdsCaso(@Param("idsCasos") List<Integer> idsCasos);
 
 }

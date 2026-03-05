@@ -28,6 +28,7 @@ import cl.rac.gesprub.Entidad.Evidencia;
 import cl.rac.gesprub.Entidad.Fuente;
 import cl.rac.gesprub.Entidad.Proyecto;
 import cl.rac.gesprub.Entidad.Usuario;
+import cl.rac.gesprub.Repositorio.ArchivoEvidenciaRepository;
 import cl.rac.gesprub.Repositorio.CasoRepository;
 import cl.rac.gesprub.Repositorio.ComponenteRepository;
 import cl.rac.gesprub.Repositorio.EvidenciaRepository;
@@ -76,6 +77,9 @@ public class CasoService {
 	
 	@Autowired
     private CicloCasoRepository cicloCasoRepository;
+	
+	@Autowired
+    private ArchivoEvidenciaRepository archivoEvidenciaRepository;
 	
 	public Caso createCaso(Caso caso) {
         return casoRepository.save(caso);
@@ -852,6 +856,50 @@ public class CasoService {
         }
 
         return casosDtos;
+    }
+    
+    
+
+    // MOVER CASOS MASIVAMENTE
+    @Transactional(rollbackFor = Exception.class)
+    public void moverCasosMasivo(List<Long> idsCasos, Integer idComponenteDestino) {
+        if (idsCasos == null || idsCasos.isEmpty()) {
+            throw new IllegalArgumentException("La lista de casos a mover no puede estar vacía.");
+        }
+        
+        // La actualización a nivel de BD es suficiente. 
+        // Como CicloCaso y Evidencia apuntan al ID del caso, esas relaciones quedan intactas automáticamente.
+        casoRepository.moverCasosMasivo(idsCasos, idComponenteDestino);
+    }
+
+    // ELIMINAR CASOS DEFINITIVAMENTE (HARD DELETE)
+    @Transactional(rollbackFor = Exception.class)
+    public void eliminarCasosMasivo(List<Long> idsCasos) {
+        if (idsCasos == null || idsCasos.isEmpty()) {
+            throw new IllegalArgumentException("La lista de casos a eliminar no puede estar vacía.");
+        }
+
+        // Convertimos la lista de Long a Integer para los repositorios que lo requieran
+        List<Integer> idsCasosInt = idsCasos.stream()
+                                          .map(Long::intValue)
+                                          .collect(Collectors.toList());
+
+        // EL ORDEN DE ELIMINACIÓN ES CRÍTICO (De hijos a padre) para evitar errores de Foreign Key:
+        
+        // 1. Archivos físicos/rutas de las evidencias
+        archivoEvidenciaRepository.eliminarPorIdsCaso(idsCasosInt);
+
+        // 2. Las Evidencias (Historial de ejecución)
+        evidenciaRepository.eliminarPorIdsCaso(idsCasosInt);
+
+        // 3. Relaciones con los Ciclos de Prueba (Alcance)
+        cicloCasoRepository.eliminarPorIdsCaso(idsCasos);
+
+        // 4. Relación Muchos-a-Muchos con Fuentes (Tabla caso_fuente)
+        casoRepository.eliminarRelacionesFuentesMasivo(idsCasos);
+
+        // 5. Finalmente, eliminar los Casos
+        casoRepository.eliminarCasosMasivo(idsCasos);
     }
 
 }

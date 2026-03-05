@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import cl.rac.gesprub.Entidad.Caso;
 
@@ -69,4 +70,21 @@ public interface CasoRepository extends JpaRepository<Caso, Long>{
     List<Caso> findByComponenteAndEstadoModificacionOpcional(
             @Param("idComponente") int idComponente, 
             @Param("idEstadoMod") Integer idEstadoMod);
+    
+    
+    
+    // Para el Req 1: Mover casos
+    @Modifying
+    @Query("UPDATE Caso c SET c.idComponente = :idComponenteDestino WHERE c.id_caso IN :idsCasos")
+    int moverCasosMasivo(@Param("idsCasos") List<Long> idsCasos, @Param("idComponenteDestino") int idComponenteDestino);
+
+    // Para el Req 2: Borrar relacion Muchos-a-Muchos de Fuentes
+    @Modifying
+    @Query(value = "DELETE FROM caso_fuente WHERE id_caso IN :idsCasos", nativeQuery = true)
+    void eliminarRelacionesFuentesMasivo(@Param("idsCasos") List<Long> idsCasos);
+
+    // Para el Req 2: Borrar los Casos finales
+    @Modifying
+    @Query("DELETE FROM Caso c WHERE c.id_caso IN :idsCasos")
+    void eliminarCasosMasivo(@Param("idsCasos") List<Long> idsCasos);
 }
