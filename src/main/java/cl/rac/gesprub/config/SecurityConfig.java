@@ -73,6 +73,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/reportes/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/ciclos/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/componente/**").permitAll()
+                //.requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated() // Para cualquier otra petición, el usuario debe estar autenticado.
             )
 
