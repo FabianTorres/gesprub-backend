@@ -19,6 +19,8 @@ import cl.rac.gesprub.Servicio.UsuarioService;
 import cl.rac.gesprub.dto.RegistroRequest;
 import cl.rac.gesprub.dto.UsuarioDTO;
 import cl.rac.gesprub.dto.CambioPasswordDTO;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/usuario")
@@ -73,6 +75,28 @@ public class UsuarioController {
         usuarioService.updateUltimoLogin(id);
         // Devolvemos una respuesta 200 OK sin cuerpo para indicar que la operación fue exitosa.
         return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Endpoint para que un Administrador formatee la contraseña de un usuario.
+     */
+    @PatchMapping("/{id}/reset-password")
+    public ResponseEntity<Map<String, String>> resetPasswordAdministrativo(
+            @PathVariable Long id, 
+            @RequestBody Map<String, String> body) {
+        
+        String nuevaPassword = body.get("password");
+        
+        if (nuevaPassword == null || nuevaPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("La nueva contraseña no puede estar vacía.");
+        }
+        
+        usuarioService.resetPasswordAdministrativo(id, nuevaPassword);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("mensaje", "Contraseña restablecida exitosamente para el usuario ID: " + id);
+        
+        return ResponseEntity.ok(response);
     }
 
 }

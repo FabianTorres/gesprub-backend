@@ -151,5 +151,40 @@ public class UsuarioService {
         // Guardamos los cambios.
         usuarioRepository.save(usuario);
     }
+    
+    
+    /**
+     * Resetea la contraseña de cualquier usuario.
+     * Solo puede ser ejecutado por un usuario con rol ADMIN.
+     */
+    @Transactional
+    public void resetPasswordAdministrativo(Long idUsuarioDestino, String nuevaPassword) {
+        // 1. Obtenemos el usuario que está haciendo la petición (El Admin)
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof UserDetails)) {
+            throw new IllegalStateException("No se pudo obtener el usuario del contexto de seguridad.");
+        }
+        String usernameLogueado = ((UserDetails) principal).getUsername();
+        
+        Usuario usuarioLogueado = usuarioRepository.findByNombreUsuario(usernameLogueado)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario token no encontrado."));
+
+        // 2. Validamos que tenga rol de ADMIN
+        // Nota: Asegúrate de que el string coincida exactamente con cómo guardas el rol en tu BD (ej: "ADMIN", "Administrador")
+        if (!"Administrador".equalsIgnoreCase(usuarioLogueado.getRolUsuario())) {
+            throw new SecurityException("Acceso denegado: No tienes permisos de administrador para realizar esta acción.");
+        }
+
+        // 3. Buscamos al usuario al que le vamos a cambiar la clave
+        Usuario usuarioDestino = usuarioRepository.findById(idUsuarioDestino)
+                .orElseThrow(() -> new IllegalArgumentException("El usuario destino con ID " + idUsuarioDestino + " no existe."));
+        
+        Autenticacion autenticacionDestino = autenticacionRepository.findByUsuario(usuarioDestino)
+                .orElseThrow(() -> new RuntimeException("No se encontraron credenciales para el usuario destino."));
+
+        // 4. Encriptamos y guardamos la nueva contraseña
+        autenticacionDestino.setPassword(passwordEncoder.encode(nuevaPassword));
+        autenticacionRepository.save(autenticacionDestino);
+    }
 
 }
