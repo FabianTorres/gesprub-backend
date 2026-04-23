@@ -12,6 +12,7 @@ import cl.rac.gesprub.modulo.vector.dto.AltaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.BajaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
+import cl.rac.gesprub.modulo.vector.dto.SincronizarCatVectorDTO;
 import cl.rac.gesprub.modulo.vector.entidad.CatVectorEntity;
 import cl.rac.gesprub.modulo.vector.entidad.CatVersionEntity;
 import cl.rac.gesprub.modulo.vector.entidad.VectorEntity;
@@ -593,5 +594,49 @@ public class VectorService {
         respuesta.put("mensaje", "Carga exitosa de " + procesados + " vectores.");
         
         return respuesta;
+    }
+    
+    
+    /**
+     * Sincronización Masiva Transaccional (Upsert) para el Catálogo de Vectores.
+     * Si falla uno, se hace Rollback de todos.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int sincronizarCatalogo(List<SincronizarCatVectorDTO> listaSincronizacion, Integer periodo) {
+        if (listaSincronizacion == null || listaSincronizacion.isEmpty()) {
+            throw new IllegalArgumentException("La lista de sincronización no puede estar vacía.");
+        }
+
+        int procesados = 0;
+
+        for (SincronizarCatVectorDTO dto : listaSincronizacion) {
+            // 1. Buscamos si el vector ya existe para ESE periodo específico
+            CatVectorEntity entidad = catVectorRepository.findByVectorIdAndPeriodo(dto.getVectorId(), periodo);
+            
+            // 2. Si no existe, creamos la instancia (INSERT). Si existe, la reutilizamos (UPDATE).
+            if (entidad == null) {
+                entidad = new CatVectorEntity();
+                entidad.setVectorId(dto.getVectorId());
+                entidad.setPeriodo(periodo);
+            }
+
+            // 3. Actualizamos los campos que vienen del Frontend
+            entidad.setNombre(dto.getNombre());
+            entidad.setTipoTecnologia(dto.getTipoTecnologia());
+            entidad.setEstado(dto.getEstado() != null ? dto.getEstado() : true);
+
+            // 4. Resolvemos la versión utilizando tu método ya creado (Crea la versión si no existe)
+            String codigoVer = (dto.getVersionIngreso() != null && !dto.getVersionIngreso().trim().isEmpty()) 
+                               ? dto.getVersionIngreso() 
+                               : "1.0"; 
+            CatVersionEntity versionObj = resolverVersion(periodo, codigoVer, true);
+            entidad.setVersionIngreso(versionObj);
+
+            // 5. Guardamos en la BD
+            catVectorRepository.save(entidad);
+            procesados++;
+        }
+
+        return procesados;
     }
 }

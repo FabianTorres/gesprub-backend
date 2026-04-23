@@ -5,6 +5,7 @@ import cl.rac.gesprub.modulo.vector.dto.BajaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.BajaRequestDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
+import cl.rac.gesprub.modulo.vector.dto.SincronizarCatVectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorLogDTO;
 import cl.rac.gesprub.modulo.vector.servicio.VectorService;
@@ -246,5 +247,24 @@ public class VectorController {
             // Retornamos 409 Conflict o 400 Bad Request según prefieras, aquí uso 409.
             return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
         }
+    }
+    
+    
+    /**
+     * Endpoint para sincronizar (Upsert) masivamente el catálogo de vectores desde el "Diff Engine" del Frontend.
+     * Se requiere el periodo por Query Param (?periodo=2026)
+     */
+    @PostMapping("/catalogo/sincronizar")
+    public ResponseEntity<Map<String, Object>> sincronizarCatalogoVectores(
+            @RequestParam Integer periodo,
+            @RequestBody List<SincronizarCatVectorDTO> payload) {
+        
+        int cantidadProcesada = vectorService.sincronizarCatalogo(payload, periodo);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("registrosProcesados", cantidadProcesada);
+        response.put("mensaje", "Catálogo sincronizado exitosamente.");
+        
+        return ResponseEntity.ok(response);
     }
 }
