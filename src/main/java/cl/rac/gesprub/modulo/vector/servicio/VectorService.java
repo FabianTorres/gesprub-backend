@@ -12,6 +12,8 @@ import cl.rac.gesprub.modulo.vector.dto.AltaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.BajaMasivaDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
+import cl.rac.gesprub.modulo.vector.dto.ModificadoDetalleDTO;
+import cl.rac.gesprub.modulo.vector.dto.SimulacionResponseDTO;
 import cl.rac.gesprub.modulo.vector.dto.SincronizarCatVectorDTO;
 import cl.rac.gesprub.modulo.vector.entidad.CatVectorEntity;
 import cl.rac.gesprub.modulo.vector.entidad.CatVersionEntity;
@@ -31,6 +33,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
+import java.util.Set;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 @Service
@@ -563,36 +567,168 @@ public class VectorService {
     
     
     /**
-     * Carga Masiva Transaccional (Todo o Nada).
-     * Itera sobre la lista y llama a guardar() individualmente.
-     * Si guardar() lanza CUALQUIER excepción, la transacción completa hace Rollback.
+     * SIMULACIÓN DE CARGA (DRY-RUN)
+     * No persiste nada en la base de datos. Operacion de solo lectura en memoria.
      */
-    @Transactional
+    public SimulacionResponseDTO simularImportacion(List<VectorDTO> listaVectores) {
+        if (listaVectores == null || listaVectores.isEmpty()) {
+            throw new IllegalArgumentException("La lista de vectores para simular no puede estar vacía.");
+        }
+
+        SimulacionResponseDTO response = new SimulacionResponseDTO();
+        response.setTotalRecibidos(listaVectores.size());
+
+        List<ModificadoDetalleDTO> modificadosDetalle = new ArrayList<>();
+        int nuevos = 0;
+        int ignorados = 0;
+
+        // 1. Obtener periodos únicos involucrados en el Excel para cargar la BD en memoria
+        Set<Integer> periodos = listaVectores.stream()
+                .map(VectorDTO::getPeriodo)
+                .collect(Collectors.toSet());
+
+        Map<String, VectorEntity> bdMap = new HashMap<>();
+        for (Integer per : periodos) {
+            List<VectorEntity> existentes = vectorRepository.findByPeriodo(per);
+            for (VectorEntity entity : existentes) {
+                // Clave compuesta única: RUT_VECTOR_PERIODO
+                String clave = entity.getRut() + "_" + entity.getVector() + "_" + entity.getPeriodo();
+                bdMap.put(clave, entity);
+            }
+        }
+
+        // 2. Clasificación en memoria a velocidad ultra-rápida
+        for (VectorDTO dto : listaVectores) {
+            String claveClasificar = dto.getRut() + "_" + dto.getVector() + "_" + dto.getPeriodo();
+
+            if (!bdMap.containsKey(claveClasificar)) {
+                nuevos++;
+            } else {
+                VectorEntity registroBD = bdMap.get(claveClasificar);
+                if (registroBD.getValor().equals(dto.getValor())) {
+                    ignorados++;
+                } else {
+                    modificadosDetalle.add(new ModificadoDetalleDTO(
+                        dto.getRut(),
+                        dto.getVector(),
+                        registroBD.getValor(),
+                        dto.getValor()
+                    ));
+                }
+            }
+        }
+
+        response.setCantidadNuevos(nuevos);
+        response.setCantidadIgnorados(ignorados);
+        response.setModificados(modificadosDetalle);
+
+        return response;
+    }
+    
+    
+    /**
+     * EJECUCION TRANSACCIONAL OPTIMIZADA (SMART UPSERT)
+     * Procesa inserciones, modificaciones y omisiones atomicamente.
+     */
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> cargaMasivaTransaccional(List<VectorDTO> listaVectores) {
-        // Validacion básica de entrada
         if (listaVectores == null || listaVectores.isEmpty()) {
             throw new IllegalArgumentException("La lista de vectores no puede estar vacía");
         }
 
-        int procesados = 0;
+        int insertados = 0;
+        int actualizados = 0;
+        int ignorados = 0;
 
+        String usuario = listaVectores.get(0).getUsuarioResponsable() != null 
+                ? listaVectores.get(0).getUsuarioResponsable() : "SYSTEM";
+
+        // 1. Cargar universos existentes en memoria RAM para evitar consultas N+1
+        Set<Integer> periodos = listaVectores.stream()
+                .map(VectorDTO::getPeriodo)
+                .collect(Collectors.toSet());
+
+        Map<String, VectorEntity> bdMap = new HashMap<>();
+        for (Integer per : periodos) {
+            List<VectorEntity> existentes = vectorRepository.findByPeriodo(per);
+            for (VectorEntity entity : existentes) {
+                bdMap.put(entity.getRut() + "_" + entity.getVector() + "_" + entity.getPeriodo(), entity);
+            }
+        }
+
+        // 2. Procesamiento del lote completo
         for (VectorDTO dto : listaVectores) {
-        	if (dto.getValor() == null) {
+            if (dto.getValor() == null) {
                 throw new IllegalArgumentException(String.format(
-                    "Error de validación: El vector %d para el RUT %d no tiene un 'valor' asignado.", 
+                    "Error de validación: El vector %d para el RUT %d no tiene un valor asignado.", 
                     dto.getVector(), dto.getRut()
                 ));
             }
-            this.guardar(dto); 
-            procesados++;
+
+            String clave = dto.getRut() + "_" + dto.getVector() + "_" + dto.getPeriodo();
+
+            if (!bdMap.containsKey(clave)) {
+                // ESCENARIO A: No existe -> INSERT
+                // Validar si el vector está catalogado antes de insertar (Regla de negocio actual)
+                CatVectorEntity catEntry = catVectorRepository.findByVectorIdAndPeriodo(dto.getVector(), dto.getPeriodo());
+                if (catEntry == null) {
+                    throw new RuntimeException("Error: El vector " + dto.getVector() + " no está catalogado para el periodo " + dto.getPeriodo());
+                }
+                if (!catEntry.getEstado()) {
+                    throw new RuntimeException("Error: El vector " + dto.getVector() + " está INACTIVO en el catálogo.");
+                }
+
+                if (dto.getDv() != null) dto.setDv(dto.getDv().toUpperCase());
+                if (dto.getDv2() != null) dto.setDv2(dto.getDv2().toUpperCase());
+
+                VectorEntity nuevaEntidad = new VectorEntity();
+                nuevaEntidad.setRut(dto.getRut());
+                nuevaEntidad.setDv(dto.getDv());
+                nuevaEntidad.setPeriodo(dto.getPeriodo());
+                nuevaEntidad.setValor(dto.getValor());
+                nuevaEntidad.setVector(dto.getVector());
+                nuevaEntidad.setRut2(dto.getRut2());
+                nuevaEntidad.setDv2(dto.getDv2());
+                nuevaEntidad.setIntencionCarga("INSERT");
+                nuevaEntidad.setProcesado(false);
+                nuevaEntidad.setElvcSeq("BIGDATA_INTEGRADO".equals(catEntry.getTipoTecnologia()) ? "BD_RAC" : "NOMCES");
+                nuevaEntidad.setUsuarioModificacion(usuario);
+
+                VectorEntity guardado = vectorRepository.save(nuevaEntidad);
+                vectorLogRepository.save(new VectorLogEntity(guardado, "CREACION", usuario));
+                insertados++;
+
+            } else {
+                VectorEntity registroBD = bdMap.get(clave);
+
+                if (registroBD.getValor().equals(dto.getValor())) {
+                    // ESCENARIO B: Existe y tiene el mismo valor -> IGNORAR SILENCIOSAMENTE
+                    ignorados++;
+                } else {
+                    // ESCENARIO C: Existe pero con valor distinto -> UPDATE/SOBREESCRIBIR
+                    registroBD.setValor(dto.getValor());
+                    if (dto.getDv() != null) registroBD.setDv(dto.getDv().toUpperCase());
+                    if (dto.getDv2() != null) registroBD.setDv2(dto.getDv2().toUpperCase());
+                    registroBD.setRut2(dto.getRut2());
+                    registroBD.setDv2(dto.getDv2());
+                    registroBD.setIntencionCarga("UPDATE");
+                    registroBD.setProcesado(false);
+                    registroBD.setUsuarioModificacion(usuario);
+
+                    VectorEntity actualizado = vectorRepository.save(registroBD);
+                    vectorLogRepository.save(new VectorLogEntity(actualizado, "MODIFICACION", usuario));
+                    actualizados++;
+                }
+            }
         }
 
-        // Si llegamos aquí, es que todo salió bien. Preparamos la respuesta.
         Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("procesados", procesados);
-        respuesta.put("errores", 0); // Si hubiera error, se habría lanzado excepción y no llegaríamos aquí
-        respuesta.put("mensaje", "Carga exitosa de " + procesados + " vectores.");
-        
+        respuesta.put("procesados", (insertados + actualizados));
+        respuesta.put("insertados", insertados);
+        respuesta.put("actualizados", actualizados);
+        respuesta.put("ignorados", ignorados);
+        respuesta.put("mensaje", String.format("Carga exitosa: %d insertados, %d actualizados, %d omitidos.", insertados, actualizados, ignorados));
+
         return respuesta;
     }
     

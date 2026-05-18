@@ -8,6 +8,7 @@ import cl.rac.gesprub.modulo.vector.dto.CatVersionDTO;
 import cl.rac.gesprub.modulo.vector.dto.SincronizarCatVectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorDTO;
 import cl.rac.gesprub.modulo.vector.dto.VectorLogDTO;
+import cl.rac.gesprub.modulo.vector.dto.SimulacionResponseDTO;
 import cl.rac.gesprub.modulo.vector.servicio.VectorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -211,8 +212,19 @@ public class VectorController {
     
     
     /**
-     * Endpoint para carga masiva de vectores.
-     * Transaccional: Si uno falla, fallan todos.
+     * Endpoint de simulación preventiva (Dry-Run).
+     * Procesa en memoria sin alterar la base de datos.
+     */
+    @PostMapping("/simular-importacion")
+    public ResponseEntity<SimulacionResponseDTO> simularImportacion(@RequestBody List<VectorDTO> payload) {
+        SimulacionResponseDTO resultado = vectorService.simularImportacion(payload);
+        return ResponseEntity.ok(resultado);
+    }
+    
+    
+    /**
+     * Carga Masiva Inteligente (Smart Upsert).
+     * Transaccional con soporte para insert/update/ignore.
      */
     @PostMapping("/importar-masivo")
     public ResponseEntity<Map<String, Object>> importarMasivo(@RequestBody List<VectorDTO> listaVectores) {
@@ -220,32 +232,10 @@ public class VectorController {
             Map<String, Object> resultado = vectorService.cargaMasivaTransaccional(listaVectores);
             return ResponseEntity.ok(resultado);
         } catch (RuntimeException e) {
-            
-            // Capturamos la excepción de negocio (Duplicado, Catálogo no existe, etc)
-            // para devolver un JSON limpio indicando que falló todo el lote.
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("procesados", 0); 
-            errorResponse.put("errores", listaVectores.size());
-            
-            String mensajeUsuario;
-
-            if (e instanceof IllegalArgumentException) {
-                // Errores de validación manual (como el del null que agregamos arriba)
-                mensajeUsuario = e.getMessage();
-            } else if (e instanceof org.springframework.dao.DataIntegrityViolationException) {
-                // Errores de Base de Datos (SQL constraints, Nulls no controlados, etc.)
-                // En vez del SQL gigante, mostramos algo genérico pero útil.
-                mensajeUsuario = "Error de integridad de datos: Verifique que no falten campos obligatorios (como el Valor) y que los datos sean correctos.";
-            } else {
-                // Otros errores inesperados
-                mensajeUsuario = "Error inesperado al procesar el lote: " + e.getMessage();
-            }
-            
-            
-            errorResponse.put("mensaje", mensajeUsuario);
-            
-            // Retornamos 409 Conflict o 400 Bad Request según prefieras, aquí uso 409.
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+            errorResponse.put("procesados", 0);
+            errorResponse.put("mensaje", "Se realizó Rollback completo del lote debido al siguiente error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }
     }
     
